@@ -22,8 +22,8 @@ A FastAPI-based server implementation for the DeepSeek R1 Distill Qwen 32B langu
 
 1. Clone the repository:
 ```bash
-git clone [repository-url]
-cd [repository-name]
+git clone
+cd
 ```
 
 2. Install dependencies:
