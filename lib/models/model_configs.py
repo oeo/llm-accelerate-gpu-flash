@@ -44,9 +44,9 @@ def load_model_configs() -> Dict[str, ModelConfig]:
             device_map=device_map,
             device=device if not device_map else None,
             torch_dtype=torch.bfloat16,  # Use bfloat16 for all models
-            use_compile=config['optimization']['torch_compile'],
-            use_flash_attention=config['optimization'].get('use_flash_attention', True),
-            use_bettertransformer=config['optimization'].get('use_bettertransformer', True),
+            attn_implementation=model_config.get('attn_implementation', 'flash_attention_2'),
+            use_compile=config['optimization'].get('torch_compile', True),
+            use_cache=True,
             temperature=model_config['generation']['temperature'],
             top_p=model_config['generation']['top_p'],
             max_new_tokens=model_config['generation']['max_tokens']
