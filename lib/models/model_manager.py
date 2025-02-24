@@ -152,6 +152,23 @@ class ModelManager:
             logger.error(f"Error unloading model {model_name}: {str(e)}")
             return False
     
+    def _format_chat_prompt(self, messages: List[Dict]) -> str:
+        """Format chat messages into a prompt."""
+        prompt = ""
+        for message in messages:
+            role = message.get("role", "")
+            content = message.get("content", "")
+            
+            if role == "system":
+                prompt += f"<|system|>{content}</|system|>\n"
+            elif role == "user":
+                prompt += f"<|user|>{content}</|user|>\n"
+            elif role == "assistant":
+                prompt += f"<|assistant|>{content}</|assistant|>\n"
+        
+        prompt += "<|assistant|>"
+        return prompt
+    
     def generate_response(
         self,
         model_name: str,
@@ -191,7 +208,9 @@ class ModelManager:
                 "pad_token_id": tokenizer.pad_token_id,
                 "eos_token_id": tokenizer.eos_token_id,
                 "bos_token_id": tokenizer.bos_token_id,
-                "use_cache": True
+                "use_cache": True,
+                "early_stopping": True,
+                "stop_sequences": ["</|assistant|>", "<|user|>", "<|system|>"]
             }
             generation_config.update(kwargs)
             
@@ -211,7 +230,8 @@ class ModelManager:
             )
             
             # Clean up response
-            for stop_token in config.stop_tokens:
+            response = response.strip()
+            for stop_token in ["</|assistant|>", "<|user|>", "<|system|>"]:
                 if stop_token in response:
                     response = response[:response.index(stop_token)]
             
@@ -219,21 +239,4 @@ class ModelManager:
             
         except Exception as e:
             logger.error(f"Error generating response with {model_name}: {str(e)}")
-            return None
-    
-    def _format_chat_prompt(self, messages: List[Dict]) -> str:
-        """Format chat messages into a prompt."""
-        prompt = ""
-        for message in messages:
-            role = message.get("role", "")
-            content = message.get("content", "")
-            
-            if role == "system":
-                prompt += f"{content}\n"
-            elif role == "user":
-                prompt += f"<|user|>{content}\n"
-            elif role == "assistant":
-                prompt += f"<|assistant|>{content}"
-        
-        prompt += "<|assistant|>"
-        return prompt 
+            return None 
