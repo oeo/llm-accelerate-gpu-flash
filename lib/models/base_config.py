@@ -45,4 +45,15 @@ class ModelConfig:
         if self.device != "auto":
             kwargs["device_map"] = self.device_map
             
-        return kwargs 
+        return kwargs
+        
+    def to_generation_config(self) -> Dict:
+        """Convert model config to generation config dictionary."""
+        return {
+            "do_sample": True,
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "max_new_tokens": self.max_new_tokens,
+            "repetition_penalty": 1.1,
+            "use_cache": self.use_cache
+        } 

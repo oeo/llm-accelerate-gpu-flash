@@ -209,18 +209,17 @@ class ModelManager:
                 stop_ids = tokenizer.encode(stop_token, add_special_tokens=False)
                 stop_token_ids.extend(stop_ids)
             
-            # Update generation config with any overrides
-            generation_config = {
-                "do_sample": True,
-                "temperature": config.temperature,
-                "top_p": config.top_p,
-                "max_new_tokens": config.max_new_tokens,
-                "repetition_penalty": 1.1,
+            # Get base generation config from model config
+            generation_config = config.to_generation_config()
+            
+            # Add tokenizer-specific settings
+            generation_config.update({
                 "pad_token_id": tokenizer.pad_token_id,
                 "eos_token_id": stop_token_ids,  # Use stop tokens as EOS tokens
-                "bos_token_id": tokenizer.bos_token_id,
-                "use_cache": True
-            }
+                "bos_token_id": tokenizer.bos_token_id
+            })
+            
+            # Update with any overrides from kwargs
             generation_config.update(kwargs)
             
             # Generate response using the new autocast API
