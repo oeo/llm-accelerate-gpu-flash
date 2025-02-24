@@ -23,8 +23,9 @@ def setup_cuda():
         print(f"  Memory: {torch.cuda.get_device_properties(i).total_memory / 1024**3:.1f}GB")
     print(f"Current device: {torch.cuda.current_device()}")
     
-    # Set default tensor type to CUDA
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    # Set default device and dtype
+    torch.set_default_device('cuda')
+    torch.set_default_dtype(torch.float32)
     
     # Empty cache
     torch.cuda.empty_cache()
