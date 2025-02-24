@@ -29,4 +29,6 @@ services:
       memlock: -1
       stack: 67108864
     privileged: true  # Needed for NUMA control
-    network_mode: host  # Better performance for GPU communication 
+    network_mode: host  # Better performance for GPU communication
+    security_opt:  # Add AppArmor configuration
+      - apparmor=unconfined

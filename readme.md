@@ -131,6 +131,119 @@ python3 -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}, D
 sudo ./scripts/gpu-optimize.sh
 ```
 
+## Docker Deployment
+
+The server can be run in a Docker container with full GPU and NUMA support.
+
+### Prerequisites
+- Docker 20.10+
+- NVIDIA Container Toolkit
+- Docker Compose v2.x
+
+### Configuration Files
+
+1. **Dockerfile**:
+```dockerfile
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    LANG=C.UTF-8 \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    numactl \
+    nvidia-utils-535 \
+    curl \
+    jq \
+    bc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python aliases
+RUN ln -sf /usr/bin/python3 /usr/bin/python && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN chmod +x scripts/*.sh scripts/models/*.sh tests/*.sh
+
+CMD ["./scripts/start-server.sh"]
+```
+
+2. **docker-compose.yml**:
+```yaml
+version: '3.8'
+
+services:
+  llm-server:
+    build: .
+    runtime: nvidia
+    ports:
+      - "8000:8000"
+    volumes:
+      - /tmp/models:/app/models  # Persistent storage for downloaded models
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0,1,2,3
+      - CUDA_DEVICE_MAX_CONNECTIONS=1
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128,expandable_segments:True
+      - TORCH_DISTRIBUTED_DEBUG=INFO
+      - TORCH_SHOW_CPP_STACKTRACES=1
+      - NUMA_GPU_NODE_PREFERRED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    privileged: true  # Needed for NUMA control
+    network_mode: host  # Better performance for GPU communication
+```
+
+### Running with Docker
+
+1. Build the container:
+```bash
+docker-compose build
+```
+
+2. Start the server:
+```bash
+docker-compose up -d
+```
+
+3. View logs:
+```bash
+docker-compose logs -f
+```
+
+4. Run tests:
+```bash
+docker-compose exec llm-server ./tests/stress_test.sh
+```
+
+### Docker Features
+- NVIDIA GPU support with proper driver mapping
+- NUMA-aware CPU and memory allocation
+- Persistent model storage
+- Optimized network performance with host networking
+- Proper resource limits and GPU capabilities
+- Python 3 environment with all dependencies
+
 ## Configuration
 
 ### Directory Structure

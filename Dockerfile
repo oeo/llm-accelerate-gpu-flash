@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+FROM ubuntu:22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -8,15 +8,19 @@ ENV DEBIAN_FRONTEND=noninteractive \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-dev \
     numactl \
-    nvidia-utils-535 \
     curl \
     jq \
     bc \
+    software-properties-common \
+    && add-apt-repository ppa:graphics-drivers/ppa \
+    && apt-get update \
+    && apt-get install -y nvidia-utils-535 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python aliases
