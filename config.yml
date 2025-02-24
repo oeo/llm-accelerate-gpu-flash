@@ -3,6 +3,7 @@ server:
   host: "0.0.0.0"
   port: 8000
   workers: 1
+  auto_load_enabled: true  # Master switch for auto-loading
 
 # GPU Configuration
 gpu:
@@ -21,6 +22,7 @@ models:
     name: "DeepSeek-R1-Distill-Qwen-32B"
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
     description: "DeepSeek R1 32B Qwen Distilled Model"
+    auto_load: false  # Don't load on startup due to size
     context_length: 4096
     num_layers: 64
     attn_implementation: "flash_attention_2"
@@ -102,6 +104,7 @@ models:
     name: "DeepSeek-R1-Distill-Qwen-14B"
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
     description: "DeepSeek R1 14B Qwen Distilled Model"
+    auto_load: true  # Load on startup
     context_length: 8192
     num_layers: 40
     attn_implementation: "flash_attention_2"
@@ -115,6 +118,7 @@ models:
     name: "DeepSeek-R1-Distill-Llama-8B"
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
     description: "DeepSeek R1 8B Llama Distilled Model"
+    auto_load: true  # Load on startup
     context_length: 16384
     num_layers: 32
     device: 0  # Can fit on a single GPU

@@ -8,6 +8,7 @@ import secrets
 import logging
 import asyncio
 import torch
+import yaml
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -21,12 +22,17 @@ from lib.models import ModelManager, AVAILABLE_MODELS
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize model manager
-model_manager = ModelManager()
+# Load config
+with open('config.yml', 'r') as f:
+    config = yaml.safe_load(f)
 
 # Server Configuration
-PORT = int(os.getenv("PORT", "8000"))
-HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", str(config['server'].get('port', 8000))))
+HOST = os.getenv("HOST", config['server'].get('host', "0.0.0.0"))
+AUTO_LOAD = config['server'].get('auto_load_enabled', False)
+
+# Initialize model manager
+model_manager = ModelManager()
 
 # Initialize FastAPI
 app = FastAPI()
@@ -38,6 +44,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+async def auto_load_models():
+    """Auto-load models marked for auto-loading in config."""
+    if not AUTO_LOAD:
+        return
+        
+    logger.info("Auto-loading enabled models...")
+    for model_id, model_config in AVAILABLE_MODELS.items():
+        if hasattr(model_config, 'auto_load') and model_config.auto_load:
+            logger.info(f"Auto-loading model: {model_id}")
+            success = model_manager.load_model(model_id)
+            if success:
+                logger.info(f"Successfully auto-loaded {model_id}")
+            else:
+                logger.error(f"Failed to auto-load {model_id}")
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize server and auto-load models."""
+    await auto_load_models()
 
 @app.middleware("http")
 async def cleanup_after_request(request: Request, call_next):

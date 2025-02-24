@@ -12,6 +12,7 @@ class ModelConfig:
     torch_dtype: torch.dtype = torch.bfloat16
     device_map: Optional[Dict[str, int]] = None
     device: Optional[str] = None
+    auto_load: bool = False  # Whether to load this model on server startup
     
     # Generation settings
     temperature: float = 0.7
