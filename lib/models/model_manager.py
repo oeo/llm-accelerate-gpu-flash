@@ -166,8 +166,9 @@ class ModelManager:
             elif role == "assistant":
                 prompt += f"<|assistant|>{content}</|assistant|>\n"
         
-        # Add assistant prefix and force thinking to be in tags
-        prompt += "<|assistant|><think>Let me think about your request.\n\n"
+        # Add assistant prefix with explicit instructions about thinking
+        prompt += "<|system|>First think about the response inside <think> tags, then provide your final response.</|system|>\n"
+        prompt += "<|assistant|>"
         return prompt
     
     def generate_response(
