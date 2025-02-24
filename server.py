@@ -325,7 +325,16 @@ async def health_check():
 
 if __name__ == "__main__":
     print(f"\nStarting server on {HOST}:{PORT}")
-    print("Available models:", [m["id"] for m in list_models().__dict__["data"]])
+    # Get available models synchronously
+    models = [
+        {
+            "id": model_id,
+            "name": config.name,
+            "description": config.description
+        }
+        for model_id, config in AVAILABLE_MODELS.items()
+    ]
+    print("Available models:", [m["id"] for m in models])
     uvicorn.run(
         app,
         host=HOST,
