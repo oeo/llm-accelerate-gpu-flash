@@ -4,17 +4,17 @@ server:
   port: 8000
   workers: 1
 
-# CPU Configuration
-cpu:
-  threads: 40
-  memory: "256GB"
+# GPU Configuration
+gpu:
+  devices: [0, 1, 2, 3]  # Using all 4 A2 GPUs
+  memory_per_gpu: "15GB"  # A2 has 16GB, leaving 1GB headroom
 
 # Optimization Settings
 optimization:
-  torch_compile: false  # Disable compilation for initial testing
-  mixed_precision: false  # No mixed precision on CPU
-  low_cpu_mem_usage: true
-  num_threads: 40
+  torch_compile: true
+  mixed_precision: "bf16"  # Using bfloat16 for better performance
+  use_flash_attention: true
+  use_bettertransformer: true
 
 # Model Configurations
 models:
@@ -24,8 +24,75 @@ models:
     description: "DeepSeek R1 32B Qwen Distilled Model"
     context_length: 4096
     num_layers: 64
-    device: "cpu"
-    memory: "128GB"
+    device_map: {
+      "model.embed_tokens": 0,
+      "model.layers.0": 0,
+      "model.layers.1": 0,
+      "model.layers.2": 0,
+      "model.layers.3": 0,
+      "model.layers.4": 0,
+      "model.layers.5": 0,
+      "model.layers.6": 0,
+      "model.layers.7": 0,
+      "model.layers.8": 0,
+      "model.layers.9": 0,
+      "model.layers.10": 0,
+      "model.layers.11": 0,
+      "model.layers.12": 0,
+      "model.layers.13": 0,
+      "model.layers.14": 0,
+      "model.layers.15": 0,
+      "model.layers.16": 1,
+      "model.layers.17": 1,
+      "model.layers.18": 1,
+      "model.layers.19": 1,
+      "model.layers.20": 1,
+      "model.layers.21": 1,
+      "model.layers.22": 1,
+      "model.layers.23": 1,
+      "model.layers.24": 1,
+      "model.layers.25": 1,
+      "model.layers.26": 1,
+      "model.layers.27": 1,
+      "model.layers.28": 1,
+      "model.layers.29": 1,
+      "model.layers.30": 1,
+      "model.layers.31": 1,
+      "model.layers.32": 2,
+      "model.layers.33": 2,
+      "model.layers.34": 2,
+      "model.layers.35": 2,
+      "model.layers.36": 2,
+      "model.layers.37": 2,
+      "model.layers.38": 2,
+      "model.layers.39": 2,
+      "model.layers.40": 2,
+      "model.layers.41": 2,
+      "model.layers.42": 2,
+      "model.layers.43": 2,
+      "model.layers.44": 2,
+      "model.layers.45": 2,
+      "model.layers.46": 2,
+      "model.layers.47": 2,
+      "model.layers.48": 3,
+      "model.layers.49": 3,
+      "model.layers.50": 3,
+      "model.layers.51": 3,
+      "model.layers.52": 3,
+      "model.layers.53": 3,
+      "model.layers.54": 3,
+      "model.layers.55": 3,
+      "model.layers.56": 3,
+      "model.layers.57": 3,
+      "model.layers.58": 3,
+      "model.layers.59": 3,
+      "model.layers.60": 3,
+      "model.layers.61": 3,
+      "model.layers.62": 3,
+      "model.layers.63": 3,
+      "model.norm": 3,
+      "lm_head": 3
+    }
     generation:
       temperature: 0.7
       top_p: 0.95
@@ -37,8 +104,51 @@ models:
     description: "DeepSeek R1 14B Qwen Distilled Model"
     context_length: 8192
     num_layers: 40
-    device: "cpu"
-    memory: "64GB"
+    device_map: {
+      "model.embed_tokens": 0,
+      "model.layers.0": 0,
+      "model.layers.1": 0,
+      "model.layers.2": 0,
+      "model.layers.3": 0,
+      "model.layers.4": 0,
+      "model.layers.5": 0,
+      "model.layers.6": 0,
+      "model.layers.7": 0,
+      "model.layers.8": 0,
+      "model.layers.9": 0,
+      "model.layers.10": 1,
+      "model.layers.11": 1,
+      "model.layers.12": 1,
+      "model.layers.13": 1,
+      "model.layers.14": 1,
+      "model.layers.15": 1,
+      "model.layers.16": 1,
+      "model.layers.17": 1,
+      "model.layers.18": 1,
+      "model.layers.19": 1,
+      "model.layers.20": 1,
+      "model.layers.21": 1,
+      "model.layers.22": 1,
+      "model.layers.23": 1,
+      "model.layers.24": 1,
+      "model.layers.25": 1,
+      "model.layers.26": 1,
+      "model.layers.27": 1,
+      "model.layers.28": 1,
+      "model.layers.29": 1,
+      "model.layers.30": 2,
+      "model.layers.31": 2,
+      "model.layers.32": 2,
+      "model.layers.33": 2,
+      "model.layers.34": 2,
+      "model.layers.35": 2,
+      "model.layers.36": 2,
+      "model.layers.37": 2,
+      "model.layers.38": 2,
+      "model.layers.39": 2,
+      "model.norm": 2,
+      "lm_head": 2
+    }
     generation:
       temperature: 0.7
       top_p: 0.95
@@ -50,12 +160,24 @@ models:
     description: "DeepSeek R1 8B Llama Distilled Model"
     context_length: 16384
     num_layers: 32
-    device: "cpu"
-    memory: "32GB"
+    device: 0  # Can fit on a single GPU
     generation:
       temperature: 0.7
       top_p: 0.95
       max_tokens: 2048
+
+# Environment Variables
+env:
+  CUDA_VISIBLE_DEVICES: "0,1,2,3"
+  CUDA_DEVICE_MAX_CONNECTIONS: "1"
+  CUDA_DEVICE_ORDER: "PCI_BUS_ID"
+  PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:512"
+  NCCL_P2P_LEVEL: "5"
+  NCCL_IB_DISABLE: "1"
+  NCCL_NET_GDR_LEVEL: "5"
+  TORCH_DISTRIBUTED_DEBUG: "INFO"
+  CUDA_LAUNCH_BLOCKING: "0"
+  TORCH_SHOW_CPP_STACKTRACES: "1"
 
 # Stop Tokens
 stop_tokens:

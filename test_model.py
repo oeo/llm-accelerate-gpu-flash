@@ -9,17 +9,12 @@ logger = logging.getLogger(__name__)
 
 def main():
     print("Testing DeepSeek R1 Distill Llama 8B model...")
-    print(f"CPU Cores: {psutil.cpu_count()}")
+    print(f"Available GPUs: {torch.cuda.device_count()}")
+    for i in range(torch.cuda.device_count()):
+        print(f"GPU {i}: {torch.cuda.get_device_name(i)}")
     print(f"Available Memory: {psutil.virtual_memory().available / (1024**3):.1f}GB")
     
-    # Set default tensor type to float32 for CPU
-    torch.set_default_tensor_type(torch.FloatTensor)
-    
-    # Disable CUDA device to ensure CPU usage
-    if torch.cuda.is_available():
-        torch.cuda.is_available = lambda: False
-    
-    # Initialize model manager with specific device
+    # Initialize model manager
     model_manager = ModelManager()
     
     # Load the 8B model
@@ -46,6 +41,12 @@ def main():
         print("\nResponse:")
         print(response)
         
+        # Print GPU memory usage
+        print("\nGPU Memory Usage:")
+        for i in range(torch.cuda.device_count()):
+            mem = torch.cuda.memory_allocated(i) / 1024**3
+            print(f"GPU {i}: {mem:.2f}GB")
+        
     except Exception as e:
         logger.error(f"Error during model testing: {str(e)}", exc_info=True)
         print(f"\nError: {str(e)}")
@@ -53,6 +54,7 @@ def main():
         # Clean up
         if hasattr(model_manager, 'models') and "deepseek-r1-distil-8b" in model_manager.models:
             model_manager.unload_model("deepseek-r1-distil-8b")
+            torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     main() 
