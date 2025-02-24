@@ -198,6 +198,12 @@ class ModelManager:
             )
             inputs = {k: v.to(model.device) for k, v in inputs.items()}
             
+            # Create stopping criteria for special tokens
+            stop_token_ids = []
+            for stop_token in ["</|assistant|>", "<|user|>", "<|system|>"]:
+                stop_ids = tokenizer.encode(stop_token, add_special_tokens=False)
+                stop_token_ids.extend(stop_ids)
+            
             # Update generation config with any overrides
             generation_config = {
                 "do_sample": True,
@@ -208,9 +214,7 @@ class ModelManager:
                 "pad_token_id": tokenizer.pad_token_id,
                 "eos_token_id": tokenizer.eos_token_id,
                 "bos_token_id": tokenizer.bos_token_id,
-                "use_cache": True,
-                "early_stopping": True,
-                "stop_sequences": ["</|assistant|>", "<|user|>", "<|system|>"]
+                "use_cache": True
             }
             generation_config.update(kwargs)
             
@@ -219,7 +223,8 @@ class ModelManager:
                 with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     outputs = model.generate(
                         **inputs,
-                        **generation_config
+                        **generation_config,
+                        eos_token_id=stop_token_ids  # Use stop tokens as EOS tokens
                     )
             
             # Decode response
