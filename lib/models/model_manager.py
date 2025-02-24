@@ -14,11 +14,30 @@ class ModelManager:
         self.models: Dict[str, AutoModelForCausalLM] = {}
         self.tokenizers: Dict[str, AutoTokenizer] = {}
         self.configs: Dict[str, ModelConfig] = AVAILABLE_MODELS
+        
+        # Initialize accelerator with mixed precision
         self.accelerator = Accelerator(
-            mixed_precision=None,  # Disable mixed precision on CPU
-            gradient_accumulation_steps=1,
-            device_placement=True
+            mixed_precision="bf16",  # Use bfloat16 mixed precision
+            device_placement=True,
+            kwargs_handlers=[self._get_device_map]
         )
+        
+        # Verify CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA is not available. This implementation requires GPU.")
+            
+        logger.info(f"Using device: {self.accelerator.device}")
+        logger.info(f"Mixed precision: {self.accelerator.mixed_precision}")
+    
+    def _get_device_map(self, config):
+        """Get device map from config or create balanced one."""
+        if hasattr(config, 'device_map') and config.device_map:
+            return config.device_map
+        elif hasattr(config, 'device') and config.device is not None:
+            return config.device
+        else:
+            # Default to first GPU if no specific mapping
+            return 0
     
     def load_model(self, model_name: str) -> bool:
         """Load a model by name."""
@@ -41,11 +60,22 @@ class ModelManager:
                 revision=config.revision
             )
             
+            # Load model with specific device map or device
+            model_kwargs = config.to_model_kwargs()
+            
             # Load model
             model = AutoModelForCausalLM.from_pretrained(
                 config.model_id,
-                **config.to_model_kwargs()
+                torch_dtype=torch.bfloat16,  # Use bfloat16 for better performance
+                **model_kwargs
             )
+            
+            # Move model to appropriate device(s)
+            device_map = self._get_device_map(config)
+            if isinstance(device_map, dict):
+                model = model.cuda()  # This will respect the device_map
+            else:
+                model = model.to(f'cuda:{device_map}')
             
             # Apply accelerator optimizations
             model = self.accelerator.prepare(model)
@@ -58,8 +88,7 @@ class ModelManager:
                     model,
                     backend="inductor",
                     mode="max-autotune",
-                    fullgraph=True,
-                    dynamic=True
+                    fullgraph=True
                 )
             
             self.models[model_name] = model
@@ -67,7 +96,7 @@ class ModelManager:
             return True
             
         except Exception as e:
-            logger.error(f"Error loading model {model_name}: {str(e)}")
+            logger.error(f"Error loading model {model_name}: {str(e)}", exc_info=True)
             return False
     
     def get_model(self, model_name: str) -> Optional[AutoModelForCausalLM]:
@@ -89,7 +118,7 @@ class ModelManager:
                 "name": name,
                 "description": config.description,
                 "context_length": config.context_length,
-                "gpu_allocation": list(config.device_map.values()) if config.device_map else None
+                "device_map": self._get_device_map(config)
             }
             for name, config in self.configs.items()
         ]
@@ -104,10 +133,6 @@ class ModelManager:
             return False
             
         try:
-            # Remove from accelerator
-            if hasattr(self.accelerator, 'remove_model'):
-                self.accelerator.remove_model(self.models[model_name])
-            
             # Delete model and tokenizer
             del self.models[model_name]
             del self.tokenizers[model_name]
@@ -150,7 +175,7 @@ class ModelManager:
             generation_config.update(kwargs)
             
             # Generate response
-            with torch.inference_mode(), torch.amp.autocast('cuda', dtype=config.torch_dtype):
+            with torch.inference_mode(), torch.cuda.amp.autocast():
                 outputs = model.generate(
                     **inputs,
                     **generation_config
@@ -180,9 +205,9 @@ class ModelManager:
             if role == "system":
                 prompt += f"{content}\n"
             elif role == "user":
-                prompt += f"<|User|>{content}\n"
+                prompt += f"<|user|>{content}\n"
             elif role == "assistant":
-                prompt += f"<|Assistant|><think>\n{content}\n</think>"
+                prompt += f"<|assistant|>{content}"
         
-        prompt += "<|Assistant|><think>"
+        prompt += "<|assistant|>"
         return prompt 

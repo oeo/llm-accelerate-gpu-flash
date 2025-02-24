@@ -7,19 +7,42 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def main():
-    print("Testing DeepSeek R1 Distill Llama 8B model...")
-    print(f"Available GPUs: {torch.cuda.device_count()}")
+def setup_cuda():
+    """Setup CUDA environment and print debug info."""
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is not available")
+    
+    # Print CUDA information
+    print("\nCUDA Setup:")
+    print(f"CUDA available: {torch.cuda.is_available()}")
+    print(f"CUDA version: {torch.version.cuda}")
+    print(f"PyTorch version: {torch.__version__}")
+    print("\nGPU Information:")
     for i in range(torch.cuda.device_count()):
         print(f"GPU {i}: {torch.cuda.get_device_name(i)}")
-    print(f"Available Memory: {psutil.virtual_memory().available / (1024**3):.1f}GB")
+        print(f"  Memory: {torch.cuda.get_device_properties(i).total_memory / 1024**3:.1f}GB")
+    print(f"Current device: {torch.cuda.current_device()}")
     
-    # Initialize model manager
-    model_manager = ModelManager()
+    # Set default tensor type to CUDA
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
     
-    # Load the 8B model
-    print("\nLoading model...")
+    # Empty cache
+    torch.cuda.empty_cache()
+
+def main():
+    print("Testing DeepSeek R1 Distill Llama 8B model...")
+    
     try:
+        # Setup CUDA
+        setup_cuda()
+        
+        print(f"\nSystem Memory: {psutil.virtual_memory().available / (1024**3):.1f}GB available")
+        
+        # Initialize model manager
+        model_manager = ModelManager()
+        
+        # Load the 8B model
+        print("\nLoading model...")
         success = model_manager.load_model("deepseek-r1-distil-8b")
         if not success:
             print("Failed to load model")
@@ -31,12 +54,13 @@ def main():
         ]
         
         print("\nGenerating response...")
-        response = model_manager.generate_response(
-            "deepseek-r1-distil-8b",
-            messages,
-            temperature=0.7,
-            max_new_tokens=100
-        )
+        with torch.cuda.amp.autocast():  # Enable automatic mixed precision
+            response = model_manager.generate_response(
+                "deepseek-r1-distil-8b",
+                messages,
+                temperature=0.7,
+                max_new_tokens=100
+            )
         
         print("\nResponse:")
         print(response)
@@ -44,8 +68,11 @@ def main():
         # Print GPU memory usage
         print("\nGPU Memory Usage:")
         for i in range(torch.cuda.device_count()):
-            mem = torch.cuda.memory_allocated(i) / 1024**3
-            print(f"GPU {i}: {mem:.2f}GB")
+            allocated = torch.cuda.memory_allocated(i) / 1024**3
+            reserved = torch.cuda.memory_reserved(i) / 1024**3
+            print(f"GPU {i}:")
+            print(f"  Allocated: {allocated:.2f}GB")
+            print(f"  Reserved:  {reserved:.2f}GB")
         
     except Exception as e:
         logger.error(f"Error during model testing: {str(e)}", exc_info=True)
