@@ -243,7 +243,7 @@ async def stream_generate(model_id: str, messages: List[dict], temperature: floa
         generation_config.update({
             "temperature": temperature,
             "top_p": top_p,
-            "max_new_tokens": max_tokens if max_tokens else 2048,
+            "max_new_tokens": max_tokens if max_tokens else config.max_new_tokens,
             "streamer": streamer
         })
 
@@ -255,7 +255,8 @@ async def stream_generate(model_id: str, messages: List[dict], temperature: floa
         thinking_closed = False
         BUFFER_SIZE = 32
 
-        async for text in streamer:
+        # Use iterator instead of async for
+        for text in streamer:
             # Check for stop tokens
             if any(stop_token in text for stop_token in config.stop_tokens):
                 if not thinking_closed:
@@ -281,6 +282,9 @@ async def stream_generate(model_id: str, messages: List[dict], temperature: floa
                 }
                 yield f"data: {json.dumps(chunk)}\n\n"
                 buffer = ""
+
+            # Add a small delay to avoid overwhelming the connection
+            await asyncio.sleep(0.01)
 
         # Send remaining buffer
         if buffer:
