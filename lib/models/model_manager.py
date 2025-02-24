@@ -241,6 +241,10 @@ class ModelManager:
             # Clean up response
             response = response.strip()
             
+            # Handle any closing tags
+            if '</' in response:
+                response = response[:response.index('</')]
+            
             # Handle think tags and other special tokens
             special_tokens = [
                 "<think>", "</think>",
