@@ -12,7 +12,17 @@ RUN apt-get update && \
         numactl \
         curl \
         jq \
-        bc && \
+        bc \
+        libjpeg-dev \
+        libpng-dev \
+        libtiff-dev \
+        libfreetype6-dev \
+        liblcms2-dev \
+        libwebp-dev \
+        zlib1g-dev \
+        gcc \
+        g++ \
+        python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python requirements
