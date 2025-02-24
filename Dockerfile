@@ -1,15 +1,13 @@
-FROM docker.io/nvidia/cuda:12.1.0-devel-ubuntu22.04
+FROM docker.io/nvidia/cuda:12.1.0-runtime-ubuntu22.04
 
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
-    CUDA_HOME=/usr/local/cuda \
-    PATH="/usr/local/cuda/bin:${PATH}" \
-    LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility \
+    CUDA_HOME=/usr/local/cuda
 
-WORKDIR /app
-
-# Install Python and system dependencies
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         python3.10 \
@@ -19,6 +17,7 @@ RUN apt-get update && \
         curl \
         jq \
         bc \
+        nvidia-utils-535 \
         libjpeg-dev \
         libpng-dev \
         libtiff-dev \
@@ -31,10 +30,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     ln -sf /usr/bin/python3 /usr/bin/python
 
-# Set up CUDA environment
-RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 && \
-    echo "/usr/local/cuda/lib64/stubs" > /etc/ld.so.conf.d/cuda-stubs.conf && \
-    ldconfig
+WORKDIR /app
 
 # Copy and install Python requirements
 COPY requirements.txt .
