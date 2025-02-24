@@ -6,17 +6,28 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install system dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
-    apt-get update && \
+# Install system dependencies and NVIDIA utilities
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         numactl \
         curl \
         jq \
-        bc && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+        bc \
+        gnupg2 \
+        software-properties-common && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -O && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        cuda-drivers-535 \
+        nvidia-utils-535 \
+        cuda-toolkit-12-1 && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm cuda-keyring_1.1-1_all.deb
+
+# Copy and install Python requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
