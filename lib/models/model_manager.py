@@ -15,6 +15,21 @@ class ModelManager:
         self.tokenizers: Dict[str, AutoTokenizer] = {}
         self.configs: Dict[str, ModelConfig] = AVAILABLE_MODELS
         
+        # Print diagnostic information
+        logger.info("CUDA Environment:")
+        logger.info(f"CUDA available: {torch.cuda.is_available()}")
+        logger.info(f"CUDA version: {torch.version.cuda}")
+        logger.info(f"CUDA device count: {torch.cuda.device_count()}")
+        logger.info(f"CUDA current device: {torch.cuda.current_device() if torch.cuda.is_available() else 'N/A'}")
+        logger.info(f"PyTorch version: {torch.__version__}")
+        
+        try:
+            import subprocess
+            nvidia_smi = subprocess.check_output(['nvidia-smi']).decode()
+            logger.info(f"nvidia-smi output:\n{nvidia_smi}")
+        except Exception as e:
+            logger.warning(f"Could not run nvidia-smi: {e}")
+        
         # Initialize accelerator with mixed precision
         self.accelerator = Accelerator(
             mixed_precision="bf16",  # Use bfloat16 mixed precision

@@ -1,10 +1,11 @@
-FROM docker.io/nvidia/cuda:12.1.0-runtime-ubuntu22.04
+FROM docker.io/nvidia/cuda:12.1.0-devel-ubuntu22.04
 
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
-    PATH="/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}" \
-    LD_LIBRARY_PATH="/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
+    CUDA_HOME=/usr/local/cuda \
+    PATH="/usr/local/cuda/bin:${PATH}" \
+    LD_LIBRARY_PATH="/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
 
 WORKDIR /app
 
@@ -29,6 +30,11 @@ RUN apt-get update && \
         g++ && \
     rm -rf /var/lib/apt/lists/* && \
     ln -sf /usr/bin/python3 /usr/bin/python
+
+# Set up CUDA environment
+RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 && \
+    echo "/usr/local/cuda/lib64/stubs" > /etc/ld.so.conf.d/cuda-stubs.conf && \
+    ldconfig
 
 # Copy and install Python requirements
 COPY requirements.txt .
