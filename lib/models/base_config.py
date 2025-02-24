@@ -31,18 +31,6 @@ class ModelConfig:
     use_compile: bool = True
     use_cache: bool = True
     
-    def to_generation_config(self) -> Dict:
-        return {
-            "use_cache": self.use_cache,
-            "do_sample": True,
-            "temperature": self.temperature,
-            "top_p": self.top_p,
-            "max_new_tokens": self.max_new_tokens,
-            "pad_token_id": 0,
-            "eos_token_id": 0,
-            "num_return_sequences": 1
-        }
-    
     def to_model_kwargs(self) -> Dict:
         kwargs = {
             "torch_dtype": self.torch_dtype,

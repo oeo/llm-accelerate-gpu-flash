@@ -51,7 +51,9 @@ class ModelManager:
             self.tokenizers[model_name] = AutoTokenizer.from_pretrained(
                 config.model_id,
                 trust_remote_code=True,
-                revision=config.revision
+                revision=config.revision,
+                padding_side="left",
+                add_bos_token=True
             )
             
             # Configure quantization
@@ -170,11 +172,27 @@ class ModelManager:
             prompt = self._format_chat_prompt(messages)
             
             # Tokenize input
-            inputs = tokenizer(prompt, return_tensors="pt", padding=True)
+            inputs = tokenizer(
+                prompt,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=config.context_length - 512  # Leave room for response
+            )
             inputs = {k: v.to(model.device) for k, v in inputs.items()}
             
             # Update generation config with any overrides
-            generation_config = config.to_generation_config()
+            generation_config = {
+                "do_sample": True,
+                "temperature": config.temperature,
+                "top_p": config.top_p,
+                "max_new_tokens": config.max_new_tokens,
+                "repetition_penalty": 1.1,
+                "pad_token_id": tokenizer.pad_token_id,
+                "eos_token_id": tokenizer.eos_token_id,
+                "bos_token_id": tokenizer.bos_token_id,
+                "use_cache": True
+            }
             generation_config.update(kwargs)
             
             # Generate response using the new autocast API
@@ -186,7 +204,11 @@ class ModelManager:
                     )
             
             # Decode response
-            response = tokenizer.decode(outputs[0], skip_special_tokens=False)
+            response = tokenizer.decode(
+                outputs[0][inputs['input_ids'].shape[1]:],  # Only decode new tokens
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=True
+            )
             
             # Clean up response
             for stop_token in config.stop_tokens:
