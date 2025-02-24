@@ -1,68 +1,71 @@
 from typing import Dict
+import yaml
 import torch
+from pathlib import Path
 from .base_config import ModelConfig
 
-def create_balanced_device_map(num_layers: int, gpu_ids: list) -> Dict[str, str]:
-    """Create a balanced device map for the model layers."""
+def create_balanced_device_map(num_layers: int, device: str) -> Dict[str, str]:
+    """Create a device map for the model layers."""
     device_map = {}
     
-    # Use CPU for all layers since no GPU is available
-    device_map['model.embed_tokens'] = 'cpu'
-    device_map['model.rotary_emb'] = 'cpu'
+    # Map all components to the specified device
+    device_map['model.embed_tokens'] = device
+    device_map['model.rotary_emb'] = device
     
-    # All layers go to CPU
     for i in range(num_layers):
-        device_map[f'model.layers.{i}'] = 'cpu'
+        device_map[f'model.layers.{i}'] = device
     
-    # Final layers on CPU
-    device_map['model.norm'] = 'cpu'
-    device_map['lm_head'] = 'cpu'
+    device_map['model.norm'] = device
+    device_map['lm_head'] = device
     
     return device_map
 
-# DeepSeek 32B Configuration (CPU)
-deepseek_32b = ModelConfig(
-    name="deepseek-r1-distil-32b",
-    model_id="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
-    description="DeepSeek R1 32B Distilled Model",
-    context_length=4096,
-    device_map=create_balanced_device_map(64, ['cpu']),
-    max_memory={
-        "cpu": "128GB"  # EPYC has plenty of RAM
-    }
-)
+def load_model_configs() -> Dict[str, ModelConfig]:
+    """Load model configurations from config.yml and augment with dynamic information."""
+    # Load config.yml
+    config_path = Path(__file__).parent.parent.parent / 'config.yml'
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    available_models = {}
+    
+    # Create ModelConfig objects for each model
+    for model_id, model_config in config['models'].items():
+        # Get device from config
+        device = model_config.get('device', 'cpu')
+        
+        # Create device map
+        device_map = create_balanced_device_map(
+            num_layers=model_config['num_layers'],
+            device=device
+        )
+        
+        # Create memory config
+        max_memory = {
+            device: model_config['memory']
+        }
+        
+        # Create ModelConfig object
+        model = ModelConfig(
+            name=model_config['name'],
+            model_id=model_config['model_id'],
+            description=model_config['description'],
+            context_length=model_config['context_length'],
+            device_map=device_map,
+            max_memory=max_memory,
+            temperature=model_config['generation']['temperature'],
+            top_p=model_config['generation']['top_p'],
+            max_new_tokens=model_config['generation']['max_tokens'],
+            # Add optimization settings from config
+            use_compile=config['optimization']['torch_compile'],
+            use_flash_attention=False,  # Not supported on CPU
+            use_bettertransformer=False,  # Not needed on CPU
+            low_cpu_mem_usage=config['optimization']['low_cpu_mem_usage']
+        )
+        
+        available_models[model_id] = model
+    
+    return available_models
 
-# DeepSeek 14B Configuration (CPU)
-deepseek_14b = ModelConfig(
-    name="deepseek-r1-14b",
-    model_id="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-    description="DeepSeek R1 14B Distilled Model",
-    context_length=8192,
-    device_map=create_balanced_device_map(32, ['cpu']),
-    max_memory={
-        "cpu": "64GB"
-    },
-    temperature=0.7,
-    top_p=0.9
-)
-
-# DeepSeek 7B Configuration (CPU)
-deepseek_7b = ModelConfig(
-    name="deepseek-r1-7b",
-    model_id="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-    description="DeepSeek R1 7B Distilled Model",
-    context_length=16384,
-    device_map=create_balanced_device_map(16, ['cpu']),
-    max_memory={
-        "cpu": "32GB"
-    },
-    temperature=0.8,
-    top_p=0.95
-)
-
-# Dictionary of available models
-AVAILABLE_MODELS = {
-    "deepseek-r1-distil-32b": deepseek_32b,
-    "deepseek-r1-14b": deepseek_14b,
-    "deepseek-r1-7b": deepseek_7b
-} 
+# Load configurations from config.yml
+AVAILABLE_MODELS = load_model_configs() 

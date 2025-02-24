@@ -1,11 +1,10 @@
 # LLM Server Usage Guide
 
-This guide explains how to use the multi-model LLM server with optimal GPU and NUMA configurations.
+This guide explains how to use the multi-model LLM server with CPU optimizations.
 
 ## Table of Contents
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
-- [Model Management](#model-management)
 - [Running Models](#running-models)
 - [API Usage](#api-usage)
 - [Monitoring](#monitoring)
@@ -14,15 +13,10 @@ This guide explains how to use the multi-model LLM server with optimal GPU and N
 ## Prerequisites
 
 Required software:
-- NVIDIA drivers and CUDA toolkit
-- Python 3.8+ with PyTorch
-- `numactl` for NUMA optimization
-- `nvidia-smi` for GPU management
-- `lsof` for port checking
-
-Required hardware:
-- NVIDIA GPUs (A2 or better recommended)
-- Multi-socket system with NUMA topology
+- Python 3.8+
+- PyTorch
+- 64GB+ System RAM (varies by model)
+- High core count CPU (AMD EPYC recommended)
 
 ## Configuration
 
@@ -30,149 +24,102 @@ Required hardware:
 
 ```
 .
-├── bin/                    # Executable scripts for specific models
-│   └── run-deepseek-32b.sh  # DeepSeek 32B model runner
+├── scripts/
+│   ├── models/
+│   │   └── run-model.sh    # Generic model runner script
+│   └── monitor.sh          # Standalone monitoring script
 ├── lib/
 │   └── models/            # Model library and configurations
 │       ├── __init__.py
 │       ├── base_config.py
 │       ├── model_configs.py
 │       └── model_manager.py
-├── scripts/
-│   ├── gpu-optimize.sh     # GPU optimization script
-│   ├── monitor.sh         # Standalone monitoring script
-│   └── models/            # Model script templates
-├── config.yml            # Main configuration file
-├── server.py             # Main server implementation
-└── requirements.txt      # Python dependencies
+├── config.yml             # Main configuration file
+├── server.py              # Main server implementation
+└── requirements.txt       # Python dependencies
 ```
 
 ### Configuration File (config.yml)
 
-The `config.yml` file controls all aspects of the server:
+The `config.yml` file controls all aspects of the server and models:
 
 ```yaml
-# Example model configuration
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+
+# CPU Configuration
+cpu:
+  threads: 40  # EPYC 40 cores
+  memory: "256GB"  # Total system memory
+
+# Model Configurations
 models:
   deepseek-r1-distil-32b:
-    gpus: [0, 1]  # Uses GPUs 0 and 1
+    name: "DeepSeek-R1-Distill-32B"
+    model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+    description: "DeepSeek R1 32B Distilled Model"
     context_length: 4096
-    memory_per_gpu: "15GB"
-    
-  deepseek-r1-14b:
-    gpus: [2]     # Uses GPU 2
-    context_length: 8192
-    memory_per_gpu: "15GB"
-    
-  deepseek-r1-7b:
-    gpus: [3]     # Uses GPU 3
-    context_length: 16384
-    memory_per_gpu: "8GB"
+    num_layers: 64
+    device: "cpu"
+    memory: "128GB"
+    generation:
+      temperature: 0.3
+      top_p: 0.85
+      max_tokens: 2048
 ```
 
-To modify model configurations:
+To add or modify models:
 1. Edit `config.yml`
-2. Restart the server to apply changes
-
-## Model Management
-
-### Available Models
-
-Currently supported models:
-
-1. **DeepSeek-R1-Distill-32B**
-   - Uses 2 GPUs (0,1) on NUMA node 1
-   - 4K context length
-   - ~30GB VRAM total
-
-2. **DeepSeek-R1-14B**
-   - Uses 1 GPU (2) on NUMA node 0
-   - 8K context length
-   - ~15GB VRAM
-
-3. **DeepSeek-R1-7B**
-   - Uses 1 GPU (3) on NUMA node 0
-   - 16K context length
-   - ~8GB VRAM
-
-### Loading Models
-
-Models can be loaded via API:
-
-```bash
-# Load 32B model
-curl -X POST http://localhost:8000/v1/models/deepseek-r1-distil-32b/load
-
-# Load 14B model
-curl -X POST http://localhost:8000/v1/models/deepseek-r1-14b/load
-
-# Load 7B model
-curl -X POST http://localhost:8000/v1/models/deepseek-r1-7b/load
-```
-
-### Unloading Models
-
-Free GPU memory by unloading models:
-
-```bash
-curl -X POST http://localhost:8000/v1/models/deepseek-r1-14b/unload
-```
+2. Add/modify model configuration under the `models` section
+3. Restart the server to apply changes
 
 ## Running Models
 
-### Starting the Server
+### Using the Model Runner
 
-1. First, optimize all GPUs:
+The `run-model.sh` script provides a flexible way to run any configured model:
+
 ```bash
-sudo ./scripts/gpu-optimize.sh
+# Basic usage
+./scripts/models/run-model.sh --model MODEL_NAME
+
+# Examples:
+# Run 7B model with 32 threads (leaving some cores for system)
+./scripts/models/run-model.sh --model deepseek-r1-7b --threads 32
+
+# Run 14B model on different port
+./scripts/models/run-model.sh --model deepseek-r1-14b --port 8001
+
+# Run 32B model with all cores
+./scripts/models/run-model.sh --model deepseek-r1-distil-32b --threads 40
 ```
 
-2. Start the server:
-```bash
-./bin/run-deepseek-32b.sh
-```
+Options:
+- `--model`: Model name from config.yml (required)
+- `--port`: Server port (default: 8000)
+- `--threads`: Number of CPU threads to use (default: 40)
 
-3. Monitor performance:
-```bash
-./scripts/monitor.sh
-```
+### Model Memory Requirements
 
-### Using Different Models
+Each model requires different amounts of system memory:
 
-Each model can be run with different configurations:
+1. **DeepSeek-R1-Distill-32B**
+   - ~128GB RAM
+   - Best for high-accuracy tasks
+   - 4K context length
 
-1. **32B Model (High Performance)**
-```bash
-# Uses GPUs 0,1 for maximum performance
-curl -X POST http://localhost:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "deepseek-r1-distil-32b",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
+2. **DeepSeek-R1-14B**
+   - ~64GB RAM
+   - Good balance of performance/memory
+   - 8K context length
 
-2. **14B Model (Extended Context)**
-```bash
-# Uses GPU 2 with 8K context
-curl -X POST http://localhost:8000/v1/chat/completions \
-  -d '{
-    "model": "deepseek-r1-14b",
-    "messages": [{"role": "user", "content": "Long context here..."}],
-    "max_tokens": 4096
-  }'
-```
-
-3. **7B Model (Maximum Context)**
-```bash
-# Uses GPU 3 with 16K context
-curl -X POST http://localhost:8000/v1/chat/completions \
-  -d '{
-    "model": "deepseek-r1-7b",
-    "messages": [{"role": "user", "content": "Very long context..."}],
-    "max_tokens": 8192
-  }'
-```
+3. **DeepSeek-R1-7B**
+   - ~32GB RAM
+   - Fastest inference
+   - 16K context length
 
 ## API Usage
 
@@ -181,17 +128,29 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 curl http://localhost:8000/v1/models
 ```
 
-### Get Model Status
+### Load a Model
 ```bash
-curl http://localhost:8000/v1/models/deepseek-r1-14b
+curl -X POST http://localhost:8000/v1/models/deepseek-r1-7b/load
 ```
 
-### Generate Response (Streaming)
+### Generate Response
 ```bash
 curl -X POST http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "deepseek-r1-14b",
+    "model": "deepseek-r1-7b",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "temperature": 0.7,
+    "stream": false
+  }'
+```
+
+### Stream Response
+```bash
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "deepseek-r1-7b",
     "messages": [{"role": "user", "content": "Hello!"}],
     "stream": true
   }'
@@ -199,74 +158,49 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 
 ## Monitoring
 
-### Real-time Monitoring
+The model runner includes built-in monitoring:
+- CPU usage per thread
+- Memory usage and allocation
+- Process information
+- Model status
 
-Use the monitoring script:
-```bash
-./scripts/monitor.sh
-```
-
-This shows:
-- GPU utilization per model
-- Memory usage
-- Temperature
-- Power consumption
-
-### Health Check
+Additional monitoring via API:
 ```bash
 curl http://localhost:8000/health
 ```
-
-Shows:
-- Loaded models
-- GPU memory status
-- System resources
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **GPU Memory Issues**
-```bash
-# Check GPU memory
-nvidia-smi
+1. **Out of Memory**
+   - Check model memory requirements
+   - Reduce `num_threads` to lower memory usage
+   - Consider using a smaller model
 
-# Unload unused models
-curl -X POST http://localhost:8000/v1/models/MODEL_NAME/unload
-```
+2. **Poor Performance**
+   - Ensure enough CPU threads are allocated
+   - Check CPU usage with monitoring
+   - Consider adjusting thread count
 
-2. **NUMA Issues**
-```bash
-# Check NUMA topology
-numactl --hardware
-
-# Verify GPU-NUMA mapping
-nvidia-smi topo -m
-```
-
-3. **Performance Issues**
-- Ensure models use GPUs on the same NUMA node
-- Monitor PCIe bandwidth between GPUs
-- Check GPU temperature and throttling
+3. **Port Conflicts**
+   - Use `--port` to specify different port
+   - Check running processes with `lsof -i :PORT`
 
 ### Best Practices
 
 1. **Memory Management**
-- Load only needed models
-- Unload unused models
-- Monitor memory fragmentation
+   - Run one model per server instance
+   - Monitor memory usage
+   - Leave some RAM for system overhead
 
-2. **NUMA Optimization**
-- Keep related GPUs on same NUMA node
-- Match CPU cores to GPU NUMA node
-- Use appropriate thread counts
+2. **CPU Optimization**
+   - Use 32-36 threads for lighter models (leaving cores for system)
+   - Use all 40 cores for 32B model when maximum performance is needed
+   - Monitor CPU usage and temperature
+   - Consider process priority for critical workloads
 
 3. **Context Length**
-- Use 32B model for standard tasks
-- Use 14B model for medium context
-- Use 7B model for maximum context
-
-4. **Multiple Models**
-- Balance GPU usage across NUMA nodes
-- Monitor system resources
-- Use appropriate batch sizes 
+   - Use 32B model for standard tasks (4K)
+   - Use 14B model for medium context (8K)
+   - Use 7B model for long context (16K) 
