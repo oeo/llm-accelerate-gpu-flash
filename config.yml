@@ -4,28 +4,78 @@ server:
   port: 8000
   workers: 1
   auto_load_enabled: true  # Master switch for auto-loading
+  vram_buffer_gb: 1.0     # Keep 1GB buffer per GPU
+  max_waiting_requests: 10 # Maximum requests in queue
+  request_timeout: 30      # Seconds to wait for VRAM
+  health_check_interval: 5 # Seconds between health checks
+
+# Resource Management
+resource_limits:
+  max_concurrent_requests_per_model: 1  # Sequential processing per model
+  max_concurrent_models: 4              # Maximum models loaded at once
+  vram_allocation:
+    32b_model: 60  # GB total across GPUs
+    14b_model: 30  # GB total
+    8b_model: 15   # GB single GPU
+    vision_models: 15  # GB for vision models
 
 # GPU Configuration
 gpu:
   devices: [0, 1, 2, 3]  # Using all 4 A2 GPUs
   memory_per_gpu: "15GB"  # A2 has 16GB, leaving 1GB headroom
+  memory_buffer: "1GB"    # Minimum free VRAM to maintain
+  overload_protection:
+    enabled: true
+    check_interval: 1.0   # Check every second
+    max_temperature: 87   # Maximum safe temperature for A2 GPUs
+    thermal_throttle: 82  # Start throttling at this temperature
+    critical_temp: 85     # Pause new requests at this temperature
+    min_free_memory: "2GB"
+    thermal_management:
+      enabled: true
+      fan_curve:
+        - [60, 30]  # Below 60°C: 30% fan speed
+        - [70, 50]  # At 70°C: 50% fan speed
+        - [80, 75]  # At 80°C: 75% fan speed
+        - [85, 100] # At 85°C: 100% fan speed
+      throttle_steps: [
+        {temp: 82, max_concurrent: 3},
+        {temp: 84, max_concurrent: 2},
+        {temp: 85, max_concurrent: 1}
+      ]
 
 # Optimization Settings
 optimization:
   torch_compile: true
   mixed_precision: "bf16"  # Using bfloat16 for better performance
   attn_implementation: "flash_attention_2"
+  memory_efficient_attention: true
+  gradient_checkpointing: true
+  rope_scaling: {"type": "dynamic", "factor": 12.0}  # Increased for better long-range attention
+  use_bettertransformer: true  # Added for faster inference
+  use_kernel_injection: true   # Added for optimized CUDA kernels
+  compile_mode: "reduce-overhead"  # Optimize for inference
+  attention_sink: true     # Global setting for attention sink
+  chunk_overlap: true      # Enable chunk overlap processing
 
 # Model Configurations
 models:
   deepseek-r1-distil-32b:
     name: "DeepSeek-R1-Distill-Qwen-32B"
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
-    description: "DeepSeek R1 32B Qwen Distilled Model"
-    auto_load: false  # Don't load on startup due to size
-    context_length: 4096
+    description: "DeepSeek R1 32B Qwen Distilled Model with sliding window attention"
+    auto_load: true
+    context_length: 524288  # 500K+ context
+    sliding_window: 8192    # Sliding window size for local attention
     num_layers: 64
     attn_implementation: "flash_attention_2"
+    load_in_8bit: true
+    torch_dtype: "bfloat16"
+    use_gradient_checkpointing: true
+    rope_scaling: {"type": "dynamic", "factor": 12.0}
+    attention_sink: true    # Enable attention sink for better long-range dependencies
+    chunk_size: 4096       # Process in chunks for better detail retention
+    overlap: 512          # Overlap between chunks to maintain context
     device_map: {
       "model.embed_tokens": 0,
       "model.layers.0": 0,
@@ -98,42 +148,115 @@ models:
     generation:
       temperature: 0.7
       top_p: 0.95
-      max_tokens: 2048
-      
+      max_tokens: 16384
+      repetition_penalty: 1.1
+      presence_penalty: 0.1  # Added to encourage covering all details
+      frequency_penalty: 0.1 # Added to encourage diverse token usage
+
   deepseek-r1-distil-14b:
     name: "DeepSeek-R1-Distill-Qwen-14B"
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
-    description: "DeepSeek R1 14B Qwen Distilled Model"
-    auto_load: true  # Load on startup
-    context_length: 8192
+    description: "DeepSeek R1 14B Qwen Distilled Model with extreme context"
+    auto_load: true
+    context_length: 524288  # Increased to 512K tokens
     num_layers: 40
     attn_implementation: "flash_attention_2"
-    device: "auto"  # Let PyTorch handle device mapping
+    device: "auto"
+    load_in_8bit: true
+    torch_dtype: "bfloat16"
+    use_gradient_checkpointing: true
+    rope_scaling: {"type": "dynamic", "factor": 8.0}
     generation:
       temperature: 0.7
       top_p: 0.95
-      max_tokens: 2048
+      max_tokens: 16384  # Increased for very long responses
+      repetition_penalty: 1.1
       
   deepseek-r1-distil-8b:
     name: "DeepSeek-R1-Distill-Llama-8B"
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-    description: "DeepSeek R1 8B Llama Distilled Model"
-    auto_load: true  # Load on startup
-    context_length: 16384
+    description: "Fast router model for initial processing"
+    auto_load: true
+    context_length: 32768
     num_layers: 32
-    device: 0  # Can fit on a single GPU
+    device: 0  # Dedicated GPU for fast inference
     attn_implementation: "flash_attention_2"
+    load_in_8bit: true
+    torch_dtype: "bfloat16"
+    use_gradient_checkpointing: false  # Disabled for speed
+    use_bettertransformer: true
+    generation:
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 1024  # Shorter responses for speed
+      batch_size: 64    # Larger batch size for faster processing
+
+  qwen-vl:
+    name: "Qwen-VL"
+    model_id: "Qwen/Qwen-VL"
+    description: "Fast visual analysis and basic image understanding"
+    auto_load: true
+    context_length: 8192
+    device: 1  # Dedicated GPU
+    load_in_8bit: true
+    torch_dtype: "bfloat16"
+    use_flash_attention: true
+    trust_remote_code: true
+    image_size: 1024  # Increased for better detail
+    image_aspect_ratio: "pad"
     generation:
       temperature: 0.7
       top_p: 0.95
       max_tokens: 2048
+      
+  idefics-80b:
+    name: "IDEFICS-80B"
+    model_id: "HuggingFaceH4/idefics-80b-instruct"
+    description: "Deep visual analysis and complex reasoning"
+    auto_load: true
+    context_length: 32768
+    device: 2  # Dedicated GPU
+    load_in_8bit: true
+    torch_dtype: "bfloat16"
+    use_flash_attention: true
+    trust_remote_code: true
+    image_size: 1536  # High resolution for detailed analysis
+    image_aspect_ratio: "keep"
+    max_num_images: 32  # Support multiple image analysis
+    generation:
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 4096
+      repetition_penalty: 1.1
+
+  fuyu-8b:
+    name: "Fuyu-8B"
+    model_id: "adept/fuyu-8b"
+    description: "OCR and document understanding specialist"
+    auto_load: false  # Lazy loading
+    context_length: 16384
+    device: 1  # Share with Qwen-VL
+    load_in_8bit: true
+    torch_dtype: "bfloat16"
+    use_flash_attention: true
+    trust_remote_code: true
+    image_size: 2048  # Very high res for document processing
+    patch_size: 16
+    use_bettertransformer: true  # Added for speed
+    use_kernel_injection: true   # Added for optimized CUDA kernels
+    unload_after_use: true      # Free up memory when not in use
+    generation:
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 2048
+      batch_size: 1  # Process one document at a time for memory efficiency
 
 # Environment Variables
 env:
   CUDA_VISIBLE_DEVICES: "0,1,2,3"
   CUDA_DEVICE_MAX_CONNECTIONS: "1"
   CUDA_DEVICE_ORDER: "PCI_BUS_ID"
-  PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:128,expandable_segments:True"
+  PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:32,expandable_segments:True,max_active_blocks:1"  # Even more aggressive memory settings
   NCCL_P2P_LEVEL: "5"
   NCCL_IB_DISABLE: "1"
   NCCL_NET_GDR_LEVEL: "5"
