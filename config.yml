@@ -65,6 +65,7 @@ models:
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
     description: "DeepSeek R1 32B Qwen Distilled Model with sliding window attention"
     auto_load: true
+    persistent: true  # Keep loaded due to high load time
     context_length: 524288  # 500K+ context
     sliding_window: 8192    # Sliding window size for local attention
     num_layers: 64
@@ -158,6 +159,7 @@ models:
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
     description: "DeepSeek R1 14B Qwen Distilled Model with extreme context"
     auto_load: true
+    persistent: true  # Keep loaded as primary model
     context_length: 524288  # Increased to 512K tokens
     num_layers: 40
     attn_implementation: "flash_attention_2"
@@ -177,6 +179,7 @@ models:
     model_id: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
     description: "Fast router model for initial processing"
     auto_load: true
+    persistent: true  # Keep loaded as fast router
     context_length: 32768
     num_layers: 32
     device: 0  # Dedicated GPU for fast inference
@@ -191,29 +194,77 @@ models:
       max_tokens: 1024  # Shorter responses for speed
       batch_size: 64    # Larger batch size for faster processing
 
-  qwen-vl:
-    name: "Qwen-VL"
-    model_id: "Qwen/Qwen-VL"
-    description: "Fast visual analysis and basic image understanding"
+  mixtral-8x7b:
+    name: "Mixtral-8x7B-Instruct"
+    model_id: "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    description: "High-performance mixture of experts model with strong inference capabilities"
     auto_load: true
-    context_length: 8192
-    device: 1  # Dedicated GPU
+    persistent: false  # Unload after 1 hour of inactivity
+    idle_timeout: 3600
+    context_length: 32768
+    is_moe: true
+    num_experts: 8
+    num_experts_per_token: 2
+    expert_stride: 1
+    device_map: {  # Optimized layer distribution for MoE
+      "model.embed_tokens": 0,
+      "model.layers.0": 0,
+      "model.layers.1": 0,
+      "model.layers.2": 0,
+      "model.layers.3": 0,
+      "model.layers.4": 0,
+      "model.layers.5": 0,
+      "model.layers.6": 0,
+      "model.layers.7": 1,
+      "model.layers.8": 1,
+      "model.layers.9": 1,
+      "model.layers.10": 1,
+      "model.layers.11": 1,
+      "model.layers.12": 1,
+      "model.layers.13": 1,
+      "model.layers.14": 1,
+      "model.layers.15": 2,
+      "model.layers.16": 2,
+      "model.layers.17": 2,
+      "model.layers.18": 2,
+      "model.layers.19": 2,
+      "model.layers.20": 2,
+      "model.layers.21": 2,
+      "model.layers.22": 2,
+      "model.layers.23": 3,
+      "model.layers.24": 3,
+      "model.layers.25": 3,
+      "model.layers.26": 3,
+      "model.layers.27": 3,
+      "model.layers.28": 3,
+      "model.layers.29": 3,
+      "model.layers.30": 3,
+      "model.norm": 3,
+      "lm_head": 3
+    }
     load_in_8bit: true
     torch_dtype: "bfloat16"
     use_flash_attention: true
     trust_remote_code: true
-    image_size: 1024  # Increased for better detail
-    image_aspect_ratio: "pad"
+    use_bettertransformer: true
+    use_kernel_injection: true
+    sliding_window: 4096
+    rope_scaling: {"type": "dynamic", "factor": 2.0}
     generation:
       temperature: 0.7
       top_p: 0.95
-      max_tokens: 2048
-      
+      max_tokens: 4096
+      repetition_penalty: 1.1
+      presence_penalty: 0.1
+      frequency_penalty: 0.1
+
   idefics-80b:
     name: "IDEFICS-80B"
     model_id: "HuggingFaceH4/idefics-80b-instruct"
     description: "Deep visual analysis and complex reasoning"
-    auto_load: true
+    auto_load: false
+    persistent: false  # Unload after 30 minutes of inactivity
+    idle_timeout: 1800
     context_length: 32768
     device: 2  # Dedicated GPU
     load_in_8bit: true
@@ -233,7 +284,9 @@ models:
     name: "Fuyu-8B"
     model_id: "adept/fuyu-8b"
     description: "OCR and document understanding specialist"
-    auto_load: false  # Lazy loading
+    auto_load: false
+    persistent: false
+    unload_after_use: true  # Unload immediately after use
     context_length: 16384
     device: 1  # Share with Qwen-VL
     load_in_8bit: true
@@ -244,7 +297,6 @@ models:
     patch_size: 16
     use_bettertransformer: true  # Added for speed
     use_kernel_injection: true   # Added for optimized CUDA kernels
-    unload_after_use: true      # Free up memory when not in use
     generation:
       temperature: 0.7
       top_p: 0.95
