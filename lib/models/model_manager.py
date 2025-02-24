@@ -154,7 +154,7 @@ class ModelManager:
     
     def _format_chat_prompt(self, messages: List[Dict]) -> str:
         """Format chat messages into a prompt."""
-        prompt = ""
+        prompt = "<|system|>You are a helpful AI assistant. Start your response with <think> to show your thinking process, then close it with </think> before providing your final response.</|system|>\n"
         for message in messages:
             role = message.get("role", "")
             content = message.get("content", "")
