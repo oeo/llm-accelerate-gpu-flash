@@ -20,7 +20,7 @@ from transformers import TextIteratorStreamer
 from threading import Thread, Lock
 from typing import List, Optional, Dict, Union
 from pydantic import BaseModel
-from lib.models import ModelManager, AVAILABLE_MODELS
+from lib.models import ModelManager, AVAILABLE_MODELS, ModelConfig
 from contextlib import asynccontextmanager
 
 # Configure logging
