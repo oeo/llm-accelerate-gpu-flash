@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.1.0-base-ubuntu22.04
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -14,12 +14,13 @@ RUN apt-get update && \
     numactl \
     curl \
     jq \
-    bc \
-    && rm -rf /var/lib/apt/lists/*
+    bc && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set Python aliases
-RUN ln -sf /usr/bin/python3 /usr/bin/python && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
 
 WORKDIR /app
 

@@ -3,6 +3,8 @@ version: '3.8'
 services:
   llm-server:
     build: .
+    image: llm-server:latest
+    container_name: llm-server
     runtime: nvidia
     ports:
       - "8000:8000"
@@ -10,6 +12,7 @@ services:
       - /tmp/models:/app/models
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - CUDA_VISIBLE_DEVICES=0,1,2,3
       - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
     deploy:
@@ -19,7 +22,11 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    privileged: true
-    network_mode: host
+    cap_add:
+      - SYS_ADMIN
     security_opt:
       - seccomp=unconfined
+      - apparmor=unconfined
+    privileged: true
+    network_mode: host
+    restart: unless-stopped
