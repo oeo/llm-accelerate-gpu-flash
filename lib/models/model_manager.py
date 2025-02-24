@@ -18,8 +18,7 @@ class ModelManager:
         # Initialize accelerator with mixed precision
         self.accelerator = Accelerator(
             mixed_precision="bf16",  # Use bfloat16 mixed precision
-            device_placement=True,
-            kwargs_handlers=[self._get_device_map]
+            device_placement=True
         )
         
         # Verify CUDA is available
@@ -28,16 +27,6 @@ class ModelManager:
             
         logger.info(f"Using device: {self.accelerator.device}")
         logger.info(f"Mixed precision: {self.accelerator.mixed_precision}")
-    
-    def _get_device_map(self, config):
-        """Get device map from config or create balanced one."""
-        if hasattr(config, 'device_map') and config.device_map:
-            return config.device_map
-        elif hasattr(config, 'device') and config.device is not None:
-            return config.device
-        else:
-            # Default to first GPU if no specific mapping
-            return 0
     
     def load_model(self, model_name: str) -> bool:
         """Load a model by name."""
@@ -60,7 +49,7 @@ class ModelManager:
                 revision=config.revision
             )
             
-            # Load model with specific device map or device
+            # Get model kwargs
             model_kwargs = config.to_model_kwargs()
             
             # Load model
@@ -71,11 +60,11 @@ class ModelManager:
             )
             
             # Move model to appropriate device(s)
-            device_map = self._get_device_map(config)
-            if isinstance(device_map, dict):
+            if config.device_map:
                 model = model.cuda()  # This will respect the device_map
             else:
-                model = model.to(f'cuda:{device_map}')
+                device = config.device if config.device is not None else 0
+                model = model.to(f'cuda:{device}')
             
             # Apply accelerator optimizations
             model = self.accelerator.prepare(model)
@@ -118,7 +107,7 @@ class ModelManager:
                 "name": name,
                 "description": config.description,
                 "context_length": config.context_length,
-                "device_map": self._get_device_map(config)
+                "device": config.device if not config.device_map else "distributed"
             }
             for name, config in self.configs.items()
         ]
