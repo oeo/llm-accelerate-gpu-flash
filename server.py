@@ -249,37 +249,10 @@ async def stream_generate(model_id: str, messages: List[dict], temperature: floa
         thread.start()
 
         buffer = ""
-        thinking_closed = False
-        in_thinking = False
         BUFFER_SIZE = 32
 
         # Use iterator instead of async for
         for text in streamer:
-            # Handle think tags based on show_thinking parameter
-            if "<think>" in text:
-                in_thinking = True
-            elif "</think>" in text:
-                in_thinking = False
-                thinking_closed = True
-
-            # Skip content if we're inside thinking tags and show_thinking is False
-            if not in_thinking and ("<think>" in text or "</think>" in text):
-                continue
-
-            # Check for stop tokens
-            if any(stop_token in text for stop_token in config.stop_tokens):
-                if not thinking_closed:
-                    chunk = {
-                        'id': chunk_id,
-                        'object': 'chat.completion.chunk',
-                        'created': int(time.time()),
-                        'model': model_id,
-                        'choices': [{'index': 0, 'delta': {'content': '</think>'}}]
-                    }
-                    yield f"data: {json.dumps(chunk)}\n\n"
-                    thinking_closed = True
-                break
-
             buffer += text
             if len(buffer) >= BUFFER_SIZE:
                 chunk = {
