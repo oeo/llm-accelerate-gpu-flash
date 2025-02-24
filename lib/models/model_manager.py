@@ -73,7 +73,7 @@ class ModelManager:
             model = AutoModelForCausalLM.from_pretrained(
                 config.model_id,
                 torch_dtype=torch.bfloat16,
-                device_map="auto" if not config.device_map else config.device_map,
+                device_map="auto" if hasattr(config, 'device') and config.device == "auto" else config.device_map,
                 quantization_config=quantization_config,
                 **model_kwargs
             )

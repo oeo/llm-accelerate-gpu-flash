@@ -11,7 +11,7 @@ class ModelConfig:
     revision: str = "main"
     torch_dtype: torch.dtype = torch.bfloat16
     device_map: Optional[Dict[str, int]] = None
-    device: Optional[int] = None
+    device: Optional[str] = None
     
     # Generation settings
     temperature: float = 0.7
@@ -33,15 +33,15 @@ class ModelConfig:
     
     def to_model_kwargs(self) -> Dict:
         kwargs = {
-            "torch_dtype": self.torch_dtype,
             "trust_remote_code": True,
             "use_cache": self.use_cache
         }
         
-        if self.device_map:
-            kwargs["device_map"] = self.device_map
-            
         if self.attn_implementation:
             kwargs["attn_implementation"] = self.attn_implementation
+            
+        # Don't include device_map in kwargs if device is set to "auto"
+        if self.device != "auto":
+            kwargs["device_map"] = self.device_map
             
         return kwargs 
