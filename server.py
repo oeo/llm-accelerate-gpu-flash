@@ -146,7 +146,6 @@ async def chat_completions(request: dict):
         top_p = float(request.get("top_p", 0.85))
         max_tokens = request.get("max_tokens", None)
         stop = request.get("stop", None)
-        show_thinking = request.get("show_thinking", True)
 
         if model_id not in AVAILABLE_MODELS:
             raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
@@ -165,8 +164,7 @@ async def chat_completions(request: dict):
                     temperature, 
                     top_p, 
                     max_tokens, 
-                    stop,
-                    show_thinking
+                    stop
                 ),
                 media_type="text/event-stream"
             )
@@ -214,7 +212,7 @@ async def chat_completions(request: dict):
             detail={"error": {"message": str(e), "type": "internal_error"}}
         )
 
-async def stream_generate(model_id: str, messages: List[dict], temperature: float, top_p: float, max_tokens: Optional[int], stop: Optional[List[str]], show_thinking: bool = True):
+async def stream_generate(model_id: str, messages: List[dict], temperature: float, top_p: float, max_tokens: Optional[int], stop: Optional[List[str]]):
     try:
         chunk_id = f"chatcmpl-{secrets.token_hex(12)}"
         model = model_manager.get_model(model_id)
@@ -223,17 +221,6 @@ async def stream_generate(model_id: str, messages: List[dict], temperature: floa
 
         if not all([model, tokenizer, config]):
             raise Exception(f"Model {model_id} not properly loaded")
-
-        # Send initial chunk with think tag only if show_thinking is True
-        if show_thinking:
-            initial_chunk = {
-                'id': chunk_id,
-                'object': 'chat.completion.chunk',
-                'created': int(time.time()),
-                'model': model_id,
-                'choices': [{'index': 0, 'delta': {'role': 'assistant', 'content': '<think>'}}]
-            }
-            yield f"data: {json.dumps(initial_chunk)}\n\n"
 
         # Format and tokenize prompt
         prompt = model_manager._format_chat_prompt(messages)
@@ -271,21 +258,17 @@ async def stream_generate(model_id: str, messages: List[dict], temperature: floa
             # Handle think tags based on show_thinking parameter
             if "<think>" in text:
                 in_thinking = True
-                if not show_thinking:
-                    continue
             elif "</think>" in text:
                 in_thinking = False
                 thinking_closed = True
-                if not show_thinking:
-                    continue
 
             # Skip content if we're inside thinking tags and show_thinking is False
-            if not show_thinking and (in_thinking or "<think>" in text or "</think>" in text):
+            if not in_thinking and ("<think>" in text or "</think>" in text):
                 continue
 
             # Check for stop tokens
             if any(stop_token in text for stop_token in config.stop_tokens):
-                if show_thinking and not thinking_closed:
+                if not thinking_closed:
                     chunk = {
                         'id': chunk_id,
                         'object': 'chat.completion.chunk',
@@ -320,17 +303,6 @@ async def stream_generate(model_id: str, messages: List[dict], temperature: floa
                 'created': int(time.time()),
                 'model': model_id,
                 'choices': [{'index': 0, 'delta': {'content': buffer}}]
-            }
-            yield f"data: {json.dumps(chunk)}\n\n"
-
-        # Close thinking tag if needed
-        if show_thinking and not thinking_closed:
-            chunk = {
-                'id': chunk_id,
-                'object': 'chat.completion.chunk',
-                'created': int(time.time()),
-                'model': model_id,
-                'choices': [{'index': 0, 'delta': {'content': '</think>'}}]
             }
             yield f"data: {json.dumps(chunk)}\n\n"
 
