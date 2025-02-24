@@ -240,9 +240,21 @@ class ModelManager:
             
             # Clean up response
             response = response.strip()
-            for stop_token in stop_tokens:
-                if stop_token in response:
-                    response = response[:response.index(stop_token)]
+            
+            # Handle think tags and other special tokens
+            special_tokens = [
+                "<think>", "</think>",
+                "<|assistant|>", "</|assistant|>",
+                "<|user|>", "</|user|>",
+                "<|system|>", "</|system|>"
+            ]
+            
+            # Remove any special tokens from the response
+            for token in special_tokens:
+                response = response.replace(token, "")
+            
+            # Final cleanup
+            response = response.strip()
             
             return response.strip()
             
