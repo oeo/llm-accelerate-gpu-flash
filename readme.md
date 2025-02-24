@@ -6,7 +6,7 @@ A FastAPI-based server implementation for DeepSeek R1 language models, providing
 
 - OpenAI-compatible API endpoints (`/v1/chat/completions`)
 - Multi-GPU support with optimized memory management
-- Automatic model loading on startup
+- Automatic model loading and intelligent unloading
 - 8-bit quantization for efficient memory usage
 - Flash Attention 2 support
 - Real-time monitoring and health checks
@@ -16,6 +16,76 @@ A FastAPI-based server implementation for DeepSeek R1 language models, providing
 - Automatic device mapping for multi-GPU setups
 - Comprehensive monitoring and diagnostics
 - Production-ready error handling
+- Thermal management and overload protection
+- Intelligent model persistence and unloading
+- Extensive testing suite with stress testing capabilities
+
+## Model Persistence Strategy
+
+The server implements an intelligent model persistence strategy:
+
+1. **Core Models (Always Loaded)**
+   - `deepseek-r1-distil-32b`: Primary large model
+   - `deepseek-r1-distil-14b`: Balanced performance model
+   - `deepseek-r1-distil-8b`: Fast routing model
+
+2. **Specialized Models (Dynamic Loading)**
+   - `mixtral-8x7b`: Unloads after 1 hour of inactivity
+   - `idefics-80b`: Unloads after 30 minutes of inactivity
+   - `fuyu-8b`: Unloads immediately after use
+
+## Thermal Management
+
+Advanced thermal protection features:
+
+```yaml
+thermal_management:
+  max_temperature: 87°C    # Maximum safe temperature
+  thermal_throttle: 82°C   # Start throttling
+  critical_temp: 85°C     # Pause new requests
+  throttle_steps:
+    - {temp: 82°C, max_concurrent: 3}
+    - {temp: 84°C, max_concurrent: 2}
+    - {temp: 85°C, max_concurrent: 1}
+```
+
+## Testing Capabilities
+
+### 1. Stress Testing
+```bash
+# Run comprehensive stress test
+./tests/stress_test.sh
+```
+Features:
+- Sequential and parallel model loading
+- Throughput measurement (tokens/sec)
+- Rate limiting validation
+- Memory usage patterns
+- Temperature monitoring
+- VRAM utilization tracking
+
+### 2. Curl Tests
+```bash
+# Run API endpoint tests
+./tests/curl_tests.sh
+```
+Tests:
+- Model loading/unloading
+- Chat completions
+- Streaming responses
+- Error handling
+- Rate limiting
+
+### 3. Load Testing
+```bash
+# Run load test with custom parameters
+python tests/load_test.py --concurrent 3 --requests 5 --delay 0.1
+```
+Capabilities:
+- Concurrent request handling
+- Response time measurement
+- Success rate tracking
+- Resource utilization monitoring
 
 ## Table of Contents
 - [Prerequisites](#prerequisites)
