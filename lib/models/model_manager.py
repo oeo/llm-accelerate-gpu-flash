@@ -59,21 +59,21 @@ class ModelManager:
             # Configure quantization
             quantization_config = BitsAndBytesConfig(
                 load_in_8bit=True,
-                bnb_8bit_compute_dtype=torch.bfloat16,
-                bnb_8bit_use_double_quant=True,
-                bnb_8bit_quant_type="nf8"
+                llm_int8_enable_fp32_cpu_offload=True
             )
             
             # Get model kwargs
             model_kwargs = config.to_model_kwargs()
             if 'torch_dtype' in model_kwargs:
                 del model_kwargs['torch_dtype']
+            if 'device_map' in model_kwargs:
+                del model_kwargs['device_map']
             
             # Load model with memory optimizations
             model = AutoModelForCausalLM.from_pretrained(
                 config.model_id,
                 torch_dtype=torch.bfloat16,
-                device_map="auto" if config.device == "auto" else None,  # Only set device_map here if auto
+                device_map="auto" if config.device == "auto" else config.device_map,
                 quantization_config=quantization_config,
                 **model_kwargs
             )
