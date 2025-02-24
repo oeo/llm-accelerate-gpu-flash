@@ -4,8 +4,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     LANG=C.UTF-8
 
-# Install dependencies in a single layer
-RUN apt-get update && \
+# Pre-configure dpkg to avoid interactive prompts
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+# Install dependencies in a single layer with minimal interaction
+RUN set -ex && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
         python3 \
         python3-pip \
@@ -16,8 +20,8 @@ RUN apt-get update && \
         bc && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
-    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+    ln -sf /usr/bin/python3 /usr/bin/python && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip
 
 WORKDIR /app
 
