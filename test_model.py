@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def main():
-    print("Testing DeepSeek R1 7B model...")
+    print("Testing DeepSeek R1 Distill Llama 8B model...")
     print(f"CPU Cores: {psutil.cpu_count()}")
     print(f"Available Memory: {psutil.virtual_memory().available / (1024**3):.1f}GB")
     
@@ -22,10 +22,10 @@ def main():
     # Initialize model manager with specific device
     model_manager = ModelManager()
     
-    # Load the 7B model
+    # Load the 8B model
     print("\nLoading model...")
     try:
-        success = model_manager.load_model("deepseek-r1-7b")
+        success = model_manager.load_model("deepseek-r1-distil-8b")
         if not success:
             print("Failed to load model")
             return
@@ -37,7 +37,7 @@ def main():
         
         print("\nGenerating response...")
         response = model_manager.generate_response(
-            "deepseek-r1-7b",
+            "deepseek-r1-distil-8b",
             messages,
             temperature=0.7,
             max_new_tokens=100
@@ -51,8 +51,8 @@ def main():
         print(f"\nError: {str(e)}")
     finally:
         # Clean up
-        if hasattr(model_manager, 'models') and "deepseek-r1-7b" in model_manager.models:
-            model_manager.unload_model("deepseek-r1-7b")
+        if hasattr(model_manager, 'models') and "deepseek-r1-distil-8b" in model_manager.models:
+            model_manager.unload_model("deepseek-r1-distil-8b")
 
 if __name__ == "__main__":
     main() 

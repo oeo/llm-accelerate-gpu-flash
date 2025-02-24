@@ -18,23 +18,23 @@ optimization:
 
 # Model Configurations
 models:
-  deepseek-r1-7b:
-    name: "DeepSeek-R1-7B"
-    model_id: "deepseek-ai/deepseek-coder-7b-base"
-    description: "DeepSeek 7B Base Model"
-    context_length: 16384
-    num_layers: 32
+  deepseek-r1-distil-32b:
+    name: "DeepSeek-R1-Distill-Qwen-32B"
+    model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+    description: "DeepSeek R1 32B Qwen Distilled Model"
+    context_length: 4096
+    num_layers: 64
     device: "cpu"
-    memory: "32GB"
+    memory: "128GB"
     generation:
       temperature: 0.7
       top_p: 0.95
       max_tokens: 2048
       
-  deepseek-r1-14b:
-    name: "DeepSeek-R1-14B"
-    model_id: "deepseek-ai/deepseek-coder-14b-base"
-    description: "DeepSeek 14B Base Model"
+  deepseek-r1-distil-14b:
+    name: "DeepSeek-R1-Distill-Qwen-14B"
+    model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
+    description: "DeepSeek R1 14B Qwen Distilled Model"
     context_length: 8192
     num_layers: 40
     device: "cpu"
@@ -44,14 +44,14 @@ models:
       top_p: 0.95
       max_tokens: 2048
       
-  deepseek-r1-distil-32b:
-    name: "DeepSeek-R1-Distill-32B"
-    model_id: "deepseek-ai/deepseek-coder-32b-base"
-    description: "DeepSeek 32B Base Model"
-    context_length: 4096
-    num_layers: 64
+  deepseek-r1-distil-8b:
+    name: "DeepSeek-R1-Distill-Llama-8B"
+    model_id: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+    description: "DeepSeek R1 8B Llama Distilled Model"
+    context_length: 16384
+    num_layers: 32
     device: "cpu"
-    memory: "128GB"
+    memory: "32GB"
     generation:
       temperature: 0.7
       top_p: 0.95
