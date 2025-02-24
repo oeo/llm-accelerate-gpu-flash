@@ -1,15 +1,12 @@
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
 
-# Pre-configure dpkg to avoid interactive prompts
-RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
-
-# Install dependencies in a single layer with minimal interaction
-RUN set -ex && \
-    apt-get update && \
+# Install basic dependencies
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         python3 \
         python3-pip \
@@ -17,7 +14,9 @@ RUN set -ex && \
         numactl \
         curl \
         jq \
-        bc && \
+        bc \
+        wget \
+        gnupg2 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     ln -sf /usr/bin/python3 /usr/bin/python && \

@@ -5,8 +5,6 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-      args:
-        BUILDKIT_INLINE_CACHE: "0"
     image: llm-server:latest
     container_name: llm-server
     runtime: nvidia
@@ -18,7 +16,9 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - CUDA_VISIBLE_DEVICES=0,1,2,3
-      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
+    privileged: true
+    network_mode: host
+    restart: unless-stopped
     deploy:
       resources:
         reservations:
@@ -26,19 +26,7 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    cap_add:
-      - SYS_ADMIN
-    security_opt:
-      - seccomp=unconfined
-      - apparmor=unconfined
-    privileged: true
-    network_mode: host
-    restart: unless-stopped
     ulimits:
       memlock: -1
       stack: 67108864
     shm_size: 16gb
-    ipc: host
-    sysctls:
-      - net.core.somaxconn=1024
-      - net.ipv4.ip_local_port_range=1024 65535
