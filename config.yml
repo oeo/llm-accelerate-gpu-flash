@@ -6,62 +6,60 @@ server:
 
 # CPU Configuration
 cpu:
-  threads: 128  # EPYC has many cores
-  memory: "256GB"  # Adjust based on your system
+  threads: 40
+  memory: "256GB"
+
+# Optimization Settings
+optimization:
+  torch_compile: false  # Disable compilation for initial testing
+  mixed_precision: false  # No mixed precision on CPU
+  low_cpu_mem_usage: true
+  num_threads: 40
 
 # Model Configurations
 models:
+  deepseek-r1-7b:
+    name: "DeepSeek-R1-7B"
+    model_id: "deepseek-ai/deepseek-coder-7b-base"
+    description: "DeepSeek 7B Base Model"
+    context_length: 16384
+    num_layers: 32
+    device: "cpu"
+    memory: "32GB"
+    generation:
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 2048
+      
+  deepseek-r1-14b:
+    name: "DeepSeek-R1-14B"
+    model_id: "deepseek-ai/deepseek-coder-14b-base"
+    description: "DeepSeek 14B Base Model"
+    context_length: 8192
+    num_layers: 40
+    device: "cpu"
+    memory: "64GB"
+    generation:
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 2048
+      
   deepseek-r1-distil-32b:
     name: "DeepSeek-R1-Distill-32B"
-    model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
-    description: "DeepSeek R1 32B Distilled Model"
+    model_id: "deepseek-ai/deepseek-coder-32b-base"
+    description: "DeepSeek 32B Base Model"
     context_length: 4096
     num_layers: 64
     device: "cpu"
     memory: "128GB"
     generation:
-      temperature: 0.3
-      top_p: 0.85
+      temperature: 0.7
+      top_p: 0.95
       max_tokens: 2048
 
-  deepseek-r1-14b:
-    name: "DeepSeek-R1-14B"
-    model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
-    description: "DeepSeek R1 14B Distilled Model"
-    context_length: 8192
-    num_layers: 32
-    device: "cpu"
-    memory: "64GB"
-    generation:
-      temperature: 0.4
-      top_p: 0.85
-      max_tokens: 4096
-
-  deepseek-r1-7b:
-    name: "DeepSeek-R1-7B"
-    model_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
-    description: "DeepSeek R1 7B Distilled Model"
-    context_length: 16384
-    num_layers: 16
-    device: "cpu"
-    memory: "32GB"
-    generation:
-      temperature: 0.4
-      top_p: 0.85
-      max_tokens: 8192
-
-# Optimization Settings
-optimization:
-  torch_compile: true
-  mixed_precision: false  # Disable mixed precision on CPU
-  low_cpu_mem_usage: true
-  num_threads: 128  # Use all CPU cores
-  
 # Stop Tokens
 stop_tokens:
-  - "<|begin▁of▁sentence|>"
-  - "<|end▁of▁sentence|>"
-  - "<|User|>"
-  - "<|Assistant|>"
-  - "<think>"
-  - "</think>" 
+  - "<|endoftext|>"
+  - "<|end|>"
+  - "<|user|>"
+  - "<|assistant|>" 
