@@ -1,5 +1,3 @@
-Here's a GitHub README.md for your repository:
-
 # DeepSeek R1 32B API Server
 
 A FastAPI-based server implementation for the DeepSeek R1 Distill Qwen 32B language model, providing OpenAI-compatible API endpoints for chat completions and text generation.
