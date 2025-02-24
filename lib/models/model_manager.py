@@ -42,6 +42,11 @@ class ModelManager:
             config = self.configs[model_name]
             logger.info(f"Loading model {model_name} ({config.model_id})")
             
+            # Clear CUDA cache before loading
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+            
             # Load tokenizer
             self.tokenizers[model_name] = AutoTokenizer.from_pretrained(
                 config.model_id,
@@ -54,19 +59,14 @@ class ModelManager:
             if 'torch_dtype' in model_kwargs:
                 del model_kwargs['torch_dtype']
             
-            # Load model
+            # Load model with memory optimizations
             model = AutoModelForCausalLM.from_pretrained(
                 config.model_id,
-                torch_dtype=torch.bfloat16,  # Use bfloat16 for better performance
+                torch_dtype=torch.bfloat16,
+                device_map="auto" if not config.device_map else config.device_map,
+                load_in_8bit=True,  # Enable 8-bit quantization
                 **model_kwargs
             )
-            
-            # Move model to appropriate device(s)
-            if config.device_map:
-                model = model.cuda()  # This will respect the device_map
-            else:
-                device = config.device if config.device is not None else 0
-                model = model.to(f'cuda:{device}')
             
             # Apply accelerator optimizations
             model = self.accelerator.prepare(model)
@@ -88,6 +88,10 @@ class ModelManager:
             
         except Exception as e:
             logger.error(f"Error loading model {model_name}: {str(e)}", exc_info=True)
+            # Clean up on error
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
             return False
     
     def get_model(self, model_name: str) -> Optional[AutoModelForCausalLM]:
