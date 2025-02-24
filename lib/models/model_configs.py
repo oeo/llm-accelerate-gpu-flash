@@ -31,19 +31,9 @@ def load_model_configs() -> Dict[str, ModelConfig]:
     
     # Create ModelConfig objects for each model
     for model_id, model_config in config['models'].items():
-        # Get device from config
-        device = model_config.get('device', 'cpu')
-        
-        # Create device map
-        device_map = create_balanced_device_map(
-            num_layers=model_config['num_layers'],
-            device=device
-        )
-        
-        # Create memory config
-        max_memory = {
-            device: model_config['memory']
-        }
+        # Get device map or device from config
+        device_map = model_config.get('device_map', None)
+        device = model_config.get('device', 0)  # Default to GPU 0
         
         # Create ModelConfig object
         model = ModelConfig(
@@ -52,15 +42,14 @@ def load_model_configs() -> Dict[str, ModelConfig]:
             description=model_config['description'],
             context_length=model_config['context_length'],
             device_map=device_map,
-            max_memory=max_memory,
+            device=device if not device_map else None,
+            torch_dtype=torch.bfloat16,  # Use bfloat16 for all models
+            use_compile=config['optimization']['torch_compile'],
+            use_flash_attention=config['optimization'].get('use_flash_attention', True),
+            use_bettertransformer=config['optimization'].get('use_bettertransformer', True),
             temperature=model_config['generation']['temperature'],
             top_p=model_config['generation']['top_p'],
-            max_new_tokens=model_config['generation']['max_tokens'],
-            # Add optimization settings from config
-            use_compile=config['optimization']['torch_compile'],
-            use_flash_attention=False,  # Not supported on CPU
-            use_bettertransformer=False,  # Not needed on CPU
-            low_cpu_mem_usage=config['optimization']['low_cpu_mem_usage']
+            max_new_tokens=model_config['generation']['max_tokens']
         )
         
         available_models[model_id] = model
