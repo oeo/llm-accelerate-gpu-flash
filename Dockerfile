@@ -1,14 +1,19 @@
-FROM python:3.10-slim
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
 
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    PATH="/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}" \
+    LD_LIBRARY_PATH="/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
 
 WORKDIR /app
 
-# Install system dependencies
+# Install Python and system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        python3.10 \
+        python3-pip \
+        python3-dev \
         numactl \
         curl \
         jq \
@@ -21,9 +26,9 @@ RUN apt-get update && \
         libwebp-dev \
         zlib1g-dev \
         gcc \
-        g++ \
-        python3-dev && \
-    rm -rf /var/lib/apt/lists/*
+        g++ && \
+    rm -rf /var/lib/apt/lists/* && \
+    ln -sf /usr/bin/python3 /usr/bin/python
 
 # Copy and install Python requirements
 COPY requirements.txt .

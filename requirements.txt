@@ -1,6 +1,8 @@
 # Core dependencies
---extra-index-url https://download.pytorch.org/whl/nightly/cpu
-torch>=2.2.0
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch>=2.2.0+cu121
+torchvision>=0.17.0+cu121
+torchaudio>=2.2.0+cu121
 transformers>=4.38.0
 accelerate>=0.27.0
 fastapi>=0.109.0
