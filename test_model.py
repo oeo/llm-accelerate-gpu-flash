@@ -55,13 +55,14 @@ def main():
         ]
         
         print("\nGenerating response...")
-        with torch.cuda.amp.autocast():  # Enable automatic mixed precision
-            response = model_manager.generate_response(
-                "deepseek-r1-distil-8b",
-                messages,
-                temperature=0.7,
-                max_new_tokens=100
-            )
+        with torch.inference_mode():
+            with torch.amp.autocast('cuda', dtype=torch.bfloat16):
+                response = model_manager.generate_response(
+                    "deepseek-r1-distil-8b",
+                    messages,
+                    temperature=0.7,
+                    max_new_tokens=100
+                )
         
         print("\nResponse:")
         print(response)

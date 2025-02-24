@@ -1,7 +1,7 @@
 import torch
 import logging
 from typing import Dict, Optional, List
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from accelerate import Accelerator
 from accelerate.hooks import AlignDevicesHook, add_hook_to_module
 from .base_config import ModelConfig
@@ -54,6 +54,14 @@ class ModelManager:
                 revision=config.revision
             )
             
+            # Configure quantization
+            quantization_config = BitsAndBytesConfig(
+                load_in_8bit=True,
+                bnb_8bit_compute_dtype=torch.bfloat16,
+                bnb_8bit_use_double_quant=True,
+                bnb_8bit_quant_type="nf8"
+            )
+            
             # Get model kwargs
             model_kwargs = config.to_model_kwargs()
             if 'torch_dtype' in model_kwargs:
@@ -64,7 +72,7 @@ class ModelManager:
                 config.model_id,
                 torch_dtype=torch.bfloat16,
                 device_map="auto" if not config.device_map else config.device_map,
-                load_in_8bit=True,  # Enable 8-bit quantization
+                quantization_config=quantization_config,
                 **model_kwargs
             )
             
@@ -169,12 +177,13 @@ class ModelManager:
             generation_config = config.to_generation_config()
             generation_config.update(kwargs)
             
-            # Generate response
-            with torch.inference_mode(), torch.cuda.amp.autocast():
-                outputs = model.generate(
-                    **inputs,
-                    **generation_config
-                )
+            # Generate response using the new autocast API
+            with torch.inference_mode():
+                with torch.amp.autocast('cuda', dtype=torch.bfloat16):
+                    outputs = model.generate(
+                        **inputs,
+                        **generation_config
+                    )
             
             # Decode response
             response = tokenizer.decode(outputs[0], skip_special_tokens=False)
