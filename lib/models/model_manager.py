@@ -199,8 +199,13 @@ class ModelManager:
             inputs = {k: v.to(model.device) for k, v in inputs.items()}
             
             # Create stopping criteria for special tokens
+            stop_tokens = [
+                "</|assistant|>", "<|user|>", "<|system|>",
+                "<think>", "</think>",
+                *config.stop_tokens  # Include model's configured stop tokens
+            ]
             stop_token_ids = []
-            for stop_token in ["</|assistant|>", "<|user|>", "<|system|>"]:
+            for stop_token in stop_tokens:
                 stop_ids = tokenizer.encode(stop_token, add_special_tokens=False)
                 stop_token_ids.extend(stop_ids)
             
@@ -212,7 +217,7 @@ class ModelManager:
                 "max_new_tokens": config.max_new_tokens,
                 "repetition_penalty": 1.1,
                 "pad_token_id": tokenizer.pad_token_id,
-                "eos_token_id": tokenizer.eos_token_id,
+                "eos_token_id": stop_token_ids,  # Use stop tokens as EOS tokens
                 "bos_token_id": tokenizer.bos_token_id,
                 "use_cache": True
             }
@@ -223,8 +228,7 @@ class ModelManager:
                 with torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     outputs = model.generate(
                         **inputs,
-                        **generation_config,
-                        eos_token_id=stop_token_ids  # Use stop tokens as EOS tokens
+                        **generation_config
                     )
             
             # Decode response
@@ -236,7 +240,7 @@ class ModelManager:
             
             # Clean up response
             response = response.strip()
-            for stop_token in ["</|assistant|>", "<|user|>", "<|system|>"]:
+            for stop_token in stop_tokens:
                 if stop_token in response:
                     response = response[:response.index(stop_token)]
             
