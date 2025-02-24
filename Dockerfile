@@ -1,11 +1,9 @@
-FROM ubuntu:22.04
+FROM nvidia/cuda:12.1.0-base-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
-    LANG=C.UTF-8 \
-    NVIDIA_VISIBLE_DEVICES=all \
-    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    LANG=C.UTF-8
 
 # Install system dependencies
 RUN apt-get update && \
@@ -17,17 +15,12 @@ RUN apt-get update && \
     curl \
     jq \
     bc \
-    software-properties-common \
-    && add-apt-repository ppa:graphics-drivers/ppa \
-    && apt-get update \
-    && apt-get install -y nvidia-utils-535 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python aliases
 RUN ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
-# Create app directory
 WORKDIR /app
 
 # Copy requirements first for better caching
@@ -40,5 +33,5 @@ COPY . .
 # Make scripts executable
 RUN chmod +x scripts/*.sh scripts/models/*.sh tests/*.sh
 
-# Default command (can be overridden)
+# Default command
 CMD ["./scripts/start-server.sh"] 
