@@ -13,17 +13,8 @@ RUN apt-get update && \
         curl \
         jq \
         bc \
-        gnupg2 \
-        software-properties-common && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -O && \
-    dpkg -i cuda-keyring_1.1-1_all.deb && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-        cuda-drivers-535 \
-        nvidia-utils-535 \
-        cuda-toolkit-12-1 && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm cuda-keyring_1.1-1_all.deb
+        nvidia-utils-535 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python requirements
 COPY requirements.txt .
