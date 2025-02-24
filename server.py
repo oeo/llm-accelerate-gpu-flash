@@ -279,8 +279,8 @@ async def stream_generate(model_id: str, messages: List[dict], temperature: floa
                 if not show_thinking:
                     continue
 
-            # Skip thinking content if show_thinking is False
-            if not show_thinking and in_thinking:
+            # Skip content if we're inside thinking tags and show_thinking is False
+            if not show_thinking and (in_thinking or "<think>" in text or "</think>" in text):
                 continue
 
             # Check for stop tokens
