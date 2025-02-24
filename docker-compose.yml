@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   llm-server:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     image: llm-server:latest
     container_name: llm-server
     runtime: nvidia
@@ -24,9 +26,16 @@ services:
               capabilities: [gpu]
     cap_add:
       - SYS_ADMIN
+      - SYS_PTRACE
+      - IPC_LOCK
     security_opt:
       - seccomp=unconfined
       - apparmor=unconfined
+      - no-new-privileges=false
     privileged: true
     network_mode: host
     restart: unless-stopped
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    shm_size: 16gb

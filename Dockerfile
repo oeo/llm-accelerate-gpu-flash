@@ -1,38 +1,54 @@
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+# Build stage
+FROM nvidia/cuda:12.1.0-base-ubuntu22.04 as builder
 
-# Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     LANG=C.UTF-8
 
-# Install system dependencies
+WORKDIR /build
+
+# Install build dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
-    python3-dev \
-    numactl \
-    curl \
-    jq \
-    bc && \
+        python3 \
+        python3-pip \
+        python3-dev \
+        && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set Python aliases
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
+# Install Python packages
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Runtime stage
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    LANG=C.UTF-8
+
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        numactl \
+        curl \
+        jq \
+        bc && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
     update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
 
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
 
-# Copy the rest of the application
+# Copy application code
 COPY . .
-
-# Make scripts executable
 RUN chmod +x scripts/*.sh scripts/models/*.sh tests/*.sh
 
-# Default command
 CMD ["./scripts/start-server.sh"] 
