@@ -7,17 +7,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - /tmp/models:/app/models  # Persistent storage for downloaded models
+      - /tmp/models:/app/models
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - CUDA_VISIBLE_DEVICES=0,1,2,3
-      - CUDA_DEVICE_MAX_CONNECTIONS=1
-      - CUDA_DEVICE_ORDER=PCI_BUS_ID
-      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128,expandable_segments:True
-      - TORCH_DISTRIBUTED_DEBUG=INFO
-      - TORCH_SHOW_CPP_STACKTRACES=1
-      - NUMA_GPU_NODE_PREFERRED=1
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
     deploy:
       resources:
         reservations:
@@ -25,10 +19,7 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    ulimits:
-      memlock: -1
-      stack: 67108864
-    privileged: true  # Needed for NUMA control
-    network_mode: host  # Better performance for GPU communication
-    security_opt:  # Add AppArmor configuration
-      - apparmor=unconfined
+    privileged: true
+    network_mode: host
+    security_opt:
+      - seccomp=unconfined
