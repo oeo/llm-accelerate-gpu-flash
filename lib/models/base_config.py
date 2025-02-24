@@ -27,8 +27,7 @@ class ModelConfig:
     ])
     
     # Optimization settings
-    use_flash_attention: bool = True
-    use_bettertransformer: bool = True
+    attn_implementation: str = "flash_attention_2"
     use_compile: bool = True
     use_cache: bool = True
     
@@ -54,10 +53,7 @@ class ModelConfig:
         if self.device_map:
             kwargs["device_map"] = self.device_map
             
-        if self.use_flash_attention:
-            kwargs["use_flash_attention_2"] = True
-            
-        if self.use_bettertransformer:
-            kwargs["use_better_transformer"] = True
+        if self.attn_implementation:
+            kwargs["attn_implementation"] = self.attn_implementation
             
         return kwargs 

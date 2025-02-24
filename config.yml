@@ -13,8 +13,7 @@ gpu:
 optimization:
   torch_compile: true
   mixed_precision: "bf16"  # Using bfloat16 for better performance
-  use_flash_attention: true
-  use_bettertransformer: true
+  attn_implementation: "flash_attention_2"
 
 # Model Configurations
 models:
