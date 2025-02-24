@@ -29,23 +29,15 @@ export NCCL_NET_GDR_LEVEL="5"
 export NCCL_SOCKET_IFNAME="^lo,docker,virbr"
 export NCCL_ALGO="Ring"
 
-# Function to check if nvidia-smi is available
-check_gpu() {
-  if ! command -v nvidia-smi &> /dev/null; then
-    echo "Error: nvidia-smi not found. Please ensure NVIDIA drivers are installed."
-    exit 1
-  fi
-}
-
 # Function to check NUMA configuration
 check_numa() {
   if ! command -v numactl &> /dev/null; then
-    echo "Error: numactl not found. Please install numactl package."
-    exit 1
+    echo "Warning: numactl not found. Continuing without NUMA optimization."
+    return 1
   fi
   
   echo "NUMA configuration:"
-  numactl --hardware
+  numactl --hardware || true
 }
 
 # Function to optimize system settings
@@ -53,28 +45,26 @@ optimize_system() {
   # Run GPU optimization script if it exists
   if [ -f "./scripts/gpu-optimize.sh" ]; then
     echo "Running GPU optimization script..."
-    bash ./scripts/gpu-optimize.sh
+    bash ./scripts/gpu-optimize.sh || true
   fi
-  
-  # Clear GPU cache
-  nvidia-smi --gpu-reset
 }
 
 # Function to start the server
 start_server() {
   echo "Starting LLM server with NUMA optimizations..."
   
-  # Use numactl to bind to NUMA node 1
-  # --cpunodebind=1: use only CPUs from node 1
-  # --membind=1: allocate memory from node 1
-  numactl --cpunodebind=1 --membind=1 python server.py
+  # Use numactl to bind to NUMA node 1 if available
+  if command -v numactl &> /dev/null; then
+    numactl --cpunodebind=1 --membind=1 python server.py
+  else
+    python server.py
+  fi
 }
 
 # Main execution
 echo "Initializing LLM server..."
 
 # Run checks
-check_gpu
 check_numa
 
 # Apply optimizations

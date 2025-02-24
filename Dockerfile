@@ -6,14 +6,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install system dependencies and NVIDIA utilities
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         numactl \
         curl \
         jq \
-        bc \
-        nvidia-utils-535 && \
+        bc && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python requirements
