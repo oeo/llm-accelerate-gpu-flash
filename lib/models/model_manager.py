@@ -260,6 +260,13 @@ class ModelManager:
             # Final cleanup
             response = response.strip()
             
+            # Extract content between think tags if present
+            if "<think>" in response and "</think>" in response:
+                start = response.find("<think>") + len("<think>")
+                end = response.find("</think>")
+                if start < end:
+                    response = response[start:end].strip()
+            
             return response.strip()
             
         except Exception as e:
