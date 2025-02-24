@@ -1,8 +1,20 @@
-tapi
-uvicorn
-transformers>=4.34.0
-torch>=2.0.0
-accelerate>=0.20.0
-sentencepiece
-bitsandbytes>=0.39.0
-psutil
+# Core dependencies
+--extra-index-url https://download.pytorch.org/whl/nightly/cpu
+torch>=2.2.0
+transformers>=4.38.0
+accelerate>=0.27.0
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.0.0
+
+# Memory and system monitoring
+psutil>=5.9.0
+
+# API and async support
+starlette>=0.36.0
+python-multipart>=0.0.9
+typing-extensions>=4.9.0
+
+# Optional optimizations
+ninja>=1.11.0  # Required for torch.compile
+einops>=0.7.0
