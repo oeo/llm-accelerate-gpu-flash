@@ -51,6 +51,8 @@ class ModelManager:
             
             # Get model kwargs
             model_kwargs = config.to_model_kwargs()
+            if 'torch_dtype' in model_kwargs:
+                del model_kwargs['torch_dtype']
             
             # Load model
             model = AutoModelForCausalLM.from_pretrained(
