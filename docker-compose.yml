@@ -25,12 +25,10 @@ services:
               count: all
               capabilities: [gpu]
     cap_add:
-      - SYS_ADMIN
-      - SYS_PTRACE
-      - IPC_LOCK
+      - ALL
     security_opt:
-      - seccomp=unconfined
       - apparmor=unconfined
+      - seccomp=unconfined
       - no-new-privileges=false
     privileged: true
     network_mode: host
@@ -39,3 +37,6 @@ services:
       memlock: -1
       stack: 67108864
     shm_size: 16gb
+    sysctls:
+      - net.core.somaxconn=1024
+      - net.ipv4.ip_local_port_range=1024 65535
