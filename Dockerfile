@@ -1,26 +1,21 @@
-FROM ubuntu:22.04
+FROM python:3.10-slim
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    LANG=C.UTF-8 \
-    PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
+ENV PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8
 
-# Install basic dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python3 \
-        python3-pip \
-        python3-dev \
+# Install system dependencies without APT cache
+RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache && \
+    apt-get update && \
+    apt-get install --no-install-recommends -y \
         numactl \
         curl \
         jq \
         bc \
         wget \
         gnupg2 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    ln -sf /usr/bin/python3 /usr/bin/python && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
